@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  docs-link-check:
+    name: Check internal links in Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lychee link checker (offline, Markdown only)
+        uses: lycheeverse/lychee-action@v1.10.0
+        with:
+          args: --offline --no-progress --include-fragments "./**/*.md"
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+  repo-sanity:
+    name: Repo sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List files and preview README
+        run: |
+          echo "Files in repo:" && ls -la
+          echo "\nREADME preview:" && sed -n '1,60p' README.md
+
