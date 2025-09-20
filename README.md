@@ -86,6 +86,28 @@
 ## 11. Next（非 MVP）
 - 自動分類/規則引擎、Forecast（帶入排程/帳單）、信用卡分期/利息試算、對帳模式/延後入帳/免息期建議、Widget/捷徑/Watch、行情與匯率 API。
 
+## 12. 如何啟動 (How to Run)
+
+請確認您的電腦已安裝 Docker 與 Docker Compose。
+
+1.  **啟動服務**
+    在專案根目錄執行以下指令：
+    ```bash
+    docker-compose up -d
+    ```
+    此指令會啟動所有服務 (frontend, backend, db)。
+
+2.  **存取服務**
+    *   **前端應用程式**: [http://localhost:5173](http://localhost:5173)
+    *   **後端 API 文件**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
+3.  **停止服務**
+    ```bash
+    docker-compose down
+    ```
+
+> 啟動時遇到問題？請參考 [本地開發設定指南](docs/local-setup-guide.md)。
+
 ## 文件與連結
 - ADR-001：前後端技術棧決策 — docs/adr/ADR-001-tech-stack.md
 - ADR-002：部署策略 — docs/adr/ADR-002-deployment.md

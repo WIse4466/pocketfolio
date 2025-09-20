@@ -9,7 +9,7 @@ services:
       - POSTGRES_PASSWORD=pocketpass
       - POSTGRES_DB=pocketfolio
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -34,8 +34,7 @@ services:
       - SPRING_FLYWAY_URL=jdbc:postgresql://db:5432/pocketfolio
       - SPRING_FLYWAY_USER=pocketuser
       - SPRING_FLYWAY_PASSWORD=pocketpass
-    volumes:
-      - ./backend:/app
+    
 
   frontend:
     build:
