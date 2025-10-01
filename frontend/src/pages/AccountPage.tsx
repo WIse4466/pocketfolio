@@ -1,15 +1,11 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { FormEvent, ChangeEvent } from 'react';
 
 const API_URL = 'http://localhost:8080/api/accounts';
 
-// Frontend representation of AccountType enum
-enum AccountType {
-    CASH = 'CASH',
-    BANK = 'BANK',
-    CREDIT_CARD = 'CREDIT_CARD',
-    E_WALLET = 'E_WALLET',
-    INVESTMENT = 'INVESTMENT',
-}
+// Account type as string union to satisfy `erasableSyntaxOnly`
+const ACCOUNT_TYPES = ['CASH','BANK','CREDIT_CARD','E_WALLET','INVESTMENT'] as const;
+type AccountType = typeof ACCOUNT_TYPES[number];
 
 // Interface for Account entity
 interface Account {
@@ -34,7 +30,7 @@ export function AccountPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [formData, setFormData] = useState({
         name: '',
-        type: AccountType.CASH, // Default to CASH
+        type: 'CASH' as AccountType, // Default to CASH
         currencyCode: 'TWD',
         initialBalance: 0,
         includeInNetWorth: true,
@@ -63,9 +59,9 @@ export function AccountPage() {
         fetchAccounts();
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        let parsedValue: any = value;
+        let parsedValue: string | number | boolean = value;
 
         if (type === 'number') {
             parsedValue = parseFloat(value);
@@ -118,7 +114,7 @@ export function AccountPage() {
             alert(`帳戶 "${formData.name}" 已成功建立！`);
             setFormData({
                 name: '',
-                type: AccountType.CASH,
+                type: 'CASH',
                 currencyCode: 'TWD',
                 initialBalance: 0,
                 includeInNetWorth: true,
@@ -159,7 +155,7 @@ export function AccountPage() {
     };
 
     // Filter accounts for autopay dropdown (exclude credit cards and the account itself if editing)
-    const autopayOptions = accounts.filter(acc => acc.type !== AccountType.CREDIT_CARD);
+    const autopayOptions = accounts.filter(acc => acc.type !== 'CREDIT_CARD');
 
     return (
         <div>
@@ -173,7 +169,7 @@ export function AccountPage() {
                 <div>
                     <label htmlFor="type">類型：</label>
                     <select id="type" name="type" value={formData.type} onChange={handleChange} required>
-                        {Object.values(AccountType).map(type => (
+                        {ACCOUNT_TYPES.map(type => (
                             <option key={type} value={type}>{type}</option>
                         ))}
                     </select>
