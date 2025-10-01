@@ -30,3 +30,20 @@ services:
 
 - **原因**: 這是因為您本地尚未安裝前端所需的依賴套件 (`node_modules`)。編輯器的 TypeScript 服務找不到 React 的型別定義，因此會將正確的語法誤判為錯誤。
 - **解決方案**: 在 `frontend` 資料夾下執行 `npm install` 來安裝本地依賴。這不會影響 Docker 的建置，純粹是為了改善您本地編輯器的開發體驗。
+
+## 重要：重整 Flyway 遷移（Baseline）
+
+本次調整已將後端資料庫遷移重整為新的基準版本（V1 重新定義 `users/categories/accounts` 結構，並以 V2 匯入預設使用者）。
+
+若你之前已啟動過本地資料庫（存在 `postgres-data` volume），請重置資料庫以套用新的 schema：
+
+1. 停止並清除容器與資料卷（會刪除本地資料）
+   ```bash
+   docker-compose down -v
+   ```
+2. 重新建置並啟動
+   ```bash
+   docker-compose up -d --build
+   ```
+
+不想刪除資料？請勿使用 `-v`，並手動比對/調整既有資料表結構；但此路徑需自行承擔資料不一致風險。

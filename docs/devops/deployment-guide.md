@@ -28,6 +28,39 @@ jobs:
 
 ---
 
+## 本倉庫 CI 現況（2025-10）
+
+此專案的 `.github/workflows/ci.yml` 已配置以下工作（PR 與 push 觸發）：
+
+- docs-link-check：Markdown 連結檢查（離線模式）
+- repo-sanity：列出檔案清單與 README 範圍預覽
+- frontend-lint：Node 20，`frontend/` 執行 `npm ci` 與 `npm run lint`
+- frontend-build：Node 20，`frontend/` 執行 `npm ci` 與 `npm run build`
+- backend-test：以 `gradle:8.8.0-jdk21` 容器於 `backend/` 執行 `gradle test`
+- backend-docker-build：使用 `backend/Dockerfile` 建置（驗證可編譯，不推鏡像）
+
+本機等效操作：
+
+```bash
+# 前端
+cd frontend
+npm ci
+npm run lint
+npm run build
+
+# 後端（以容器執行測試）
+docker run --rm \
+  -v "$PWD/backend":/home/gradle/project \
+  -w /home/gradle/project \
+  gradle:8.8.0-jdk21 \
+  gradle test
+
+# 後端 Docker 建置
+docker build -f backend/Dockerfile -t pocketfolio-backend-local:latest backend
+```
+
+> 補充：Compose 檔已移除舊版 `version` 欄位（Compose v2 已不需要），使用 `docker compose ...` 指令即可。
+
 ## 0) 你要做什麼（Checklist）
 
 - [ ] 在 GitHub 建立 Secrets：`GHCR_USERNAME`、`GHCR_TOKEN`(=PAT 或 GITHUB_TOKEN)、`SSH_HOST`、`SSH_USER`、`SSH_KEY`、`LINE_NOTIFY_TOKEN`
@@ -424,4 +457,3 @@ IMAGE_TAG=<GIT_SHA> docker compose --env-file .env.prod -f infra/docker-compose.
 
 - 不必等整個 DevOps 都完成才開始開發。建議優先完成：本地 DB + `/actuator/health` + 簡單 CI（test build），其餘逐步補齊。
 - 本指南為操作層；決策脈絡與替代方案請見 ADR-002。
-
