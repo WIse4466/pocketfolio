@@ -160,21 +160,24 @@ erDiagram
     uuid id PK
     uuid user_id FK
     string name
-    string type
-    string currency_code
+    string type "CASH, BANK, CREDIT_CARD, E_WALLET, INVESTMENT"
+    string currency_code "ISO 4217, e.g., TWD, USD"
     decimal initial_balance
+    decimal current_balance
+    boolean include_in_net_worth
     boolean archived
-    int closing_day
-    int due_day
-    uuid autopay_account_id
+    int closing_day "Credit card only"
+    int due_day "Credit card only"
+    uuid autopay_account_id FK "Self-referencing"
+    string notes
     datetime created_at
+    datetime updated_at
   }
 
   CATEGORY {
     uuid id PK
     uuid user_id FK
     string name
-    string type
     uuid parent_id
     boolean builtin
   }

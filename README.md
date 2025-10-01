@@ -108,6 +108,22 @@
 
 > 啟動時遇到問題？請參考 [本地開發設定指南](docs/local-setup-guide.md)。
 
+## 13. CI（持續整合）
+
+本倉庫使用 GitHub Actions 進行最小可行驗證（前後端分開、可並行）：
+
+- docs-link-check：Markdown 內部連結檢查（Lychee，離線）
+- repo-sanity：列出檔案與 README 範圍預覽
+- frontend-lint：Node 20，於 `frontend/` 執行 `npm ci` 與 `npm run lint`
+- frontend-build：Node 20，於 `frontend/` 執行 `npm ci` 與 `npm run build`
+- backend-test：以 `gradle:8.8.0-jdk21` 容器於 `backend/` 執行 `gradle test`
+- backend-docker-build：使用 `backend/Dockerfile` 進行建置（驗證可編譯，不推鏡像）
+
+本機等效指令（選擇性）：
+- 前端 Lint/Build：`cd frontend && npm ci && npm run lint && npm run build`
+- 後端測試（容器）：`docker run --rm -v "$PWD/backend":/home/gradle/project -w /home/gradle/project gradle:8.8.0-jdk21 gradle test`
+- 後端 Docker 建置：`docker build -f backend/Dockerfile -t pocketfolio-backend-local:latest backend`
+
 ## 文件與連結
 - ADR-001：前後端技術棧決策 — docs/adr/ADR-001-tech-stack.md
 - ADR-002：部署策略 — docs/adr/ADR-002-deployment.md
