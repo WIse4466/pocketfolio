@@ -101,6 +101,21 @@ export function TransactionsCalendarPage() {
     return map;
   }, [items]);
 
+  // Map accounts for quick lookup
+  const accountMap = useMemo(() => {
+    const m = new Map<string, Account>();
+    for (const a of accounts) m.set(a.id, a);
+    return m;
+  }, [accounts]);
+
+  const itemsOfSelectedDay = useMemo(() => {
+    if (!selectedDate) return [] as TxItem[];
+    return items.filter(it => {
+      const d = new Date(it.occurredAt);
+      return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate())) === selectedDate;
+    });
+  }, [items, selectedDate]);
+
   const daysGrid = useMemo(() => {
     const firstWeekday = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1).getDay();
     const totalDays = monthEnd.getDate();
@@ -191,6 +206,35 @@ export function TransactionsCalendarPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', padding: 16, minWidth: 320 }}>
             <h3>建立交易（{selectedDate}）</h3>
+            {/* Existing items for the day */}
+            <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 8, border: '1px solid #eee', padding: 8 }}>
+              {itemsOfSelectedDay.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#777' }}>當日尚無交易</div>
+              ) : (
+                itemsOfSelectedDay.map((it) => {
+                  const color = it.kind === 'INCOME' ? '#138a36' : it.kind === 'EXPENSE' ? '#c62828' : '#1565c0';
+                  const sign = it.kind === 'INCOME' ? '+' : it.kind === 'EXPENSE' ? '-' : '';
+                  const src = it.kind === 'TRANSFER' && it['sourceAccountId' as keyof TxItem as any] ? accountMap.get((it as any).sourceAccountId as string)?.name : undefined;
+                  const dst = it.kind === 'TRANSFER' && it['targetAccountId' as keyof TxItem as any] ? accountMap.get((it as any).targetAccountId as string)?.name : undefined;
+                  const acc = it.kind !== 'TRANSFER' && it['accountId' as keyof TxItem as any] ? accountMap.get((it as any).accountId as string)?.name : undefined;
+                  return (
+                    <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid #f2f2f2' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: `${color}20`, color }}>{it.kind}</span>
+                        <span style={{ fontSize: 12, color: '#555' }}>
+                          {it.kind === 'TRANSFER' ? (
+                            <>{src ?? '來源?'} → {dst ?? '目標?'}</>
+                          ) : (
+                            <>{acc ?? '帳戶?'}</>
+                          )}
+                        </span>
+                      </div>
+                      <div style={{ color, fontWeight: 600 }}>{sign}{it.amount.toLocaleString()}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
             <div>
               <label>類型：</label>
               <label><input type="radio" name="kind" value="INCOME" checked={kind==='INCOME'} onChange={() => setKind('INCOME')} /> 收入</label>
@@ -247,4 +291,3 @@ export function TransactionsCalendarPage() {
     </div>
   );
 }
-

@@ -32,6 +32,7 @@ public class TransactionController {
     }
 
     @GetMapping
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<Page<TransactionDto>> list(
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) Instant from,
