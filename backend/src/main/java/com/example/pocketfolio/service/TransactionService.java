@@ -7,10 +7,13 @@ import com.example.pocketfolio.repository.AccountRepository;
 import com.example.pocketfolio.repository.CategoryRepository;
 import com.example.pocketfolio.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -122,5 +125,12 @@ public class TransactionService {
             throw new IllegalArgumentException("跨幣別交易尚未支援（MVP 限單一幣別）");
         }
     }
-}
 
+    @Transactional(readOnly = true)
+    public Page<Transaction> listTransactions(UUID userId, Instant from, Instant to, Pageable pageable) {
+        UUID uid = (userId != null) ? userId : UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Instant start = (from != null) ? from : Instant.EPOCH;
+        Instant end = (to != null) ? to : Instant.now();
+        return transactionRepository.findByUserIdAndOccurredAtBetweenOrderByOccurredAtAsc(uid, start, end, pageable);
+    }
+}
