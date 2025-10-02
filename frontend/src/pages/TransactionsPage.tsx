@@ -69,9 +69,12 @@ export function TransactionsPage() {
         const catData: CategoryNode[] = await catRes.json();
         setAccounts(accData);
         setCategories(catData);
-        if (accData.length && !accountId) setAccountId(accData[0].id);
-        if (accData.length && !sourceAccountId) setSourceAccountId(accData[0].id);
-        if (accData.length > 1 && !targetAccountId) setTargetAccountId(accData[1].id);
+        // Initialize defaults once after load (avoid depending on existing state)
+        if (accData.length) {
+          setAccountId(accData[0].id);
+          setSourceAccountId(accData[0].id);
+          setTargetAccountId(accData[1]?.id ?? accData[0].id);
+        }
       } catch (e) {
         console.error(e);
         alert('載入帳戶/分類資料失敗');
@@ -94,34 +97,56 @@ export function TransactionsPage() {
 
     const findAcc = (id: string) => accounts.find(a => a.id === id);
 
-    let payload: any = {
-      userId,
-      kind,
-      amount,
-      occurredAt,
-      notes: notes || null,
+    type BasePayload = {
+      userId: string;
+      kind: Kind;
+      amount: number;
+      occurredAt: string;
+      notes: string | null;
+    };
+    type IncomeExpensePayload = BasePayload & {
+      currencyCode: string;
+      accountId: string;
+      categoryId?: string;
+    };
+    type TransferPayload = BasePayload & {
+      currencyCode: string;
+      sourceAccountId: string;
+      targetAccountId: string;
     };
 
-    if (kind === 'INCOME' || kind === 'EXPENSE') {
-      const acc = findAcc(accountId);
-      if (!acc) {
-        alert('請選擇帳戶');
-        return;
-      }
-      payload.accountId = accountId;
-      payload.currencyCode = acc.currencyCode;
-      if (categoryId) payload.categoryId = categoryId;
-    } else {
-      const source = findAcc(sourceAccountId);
-      const target = findAcc(targetAccountId);
-      if (!source || !target) {
-        alert('請選擇來源與目標帳戶');
-        return;
-      }
-      payload.sourceAccountId = sourceAccountId;
-      payload.targetAccountId = targetAccountId;
-      payload.currencyCode = source.currencyCode; // must match target in backend
-    }
+    const base: BasePayload = { userId, kind, amount, occurredAt, notes: notes || null };
+
+    const payload: IncomeExpensePayload | TransferPayload = (kind === 'INCOME' || kind === 'EXPENSE')
+      ? (() => {
+          const acc = findAcc(accountId);
+          if (!acc) {
+            alert('請選擇帳戶');
+            throw new Error('missing account');
+          }
+          const p: IncomeExpensePayload = {
+            ...base,
+            accountId,
+            currencyCode: acc.currencyCode,
+            ...(categoryId ? { categoryId } : {}),
+          };
+          return p;
+        })()
+      : (() => {
+          const source = findAcc(sourceAccountId);
+          const target = findAcc(targetAccountId);
+          if (!source || !target) {
+            alert('請選擇來源與目標帳戶');
+            throw new Error('missing source/target');
+          }
+          const p: TransferPayload = {
+            ...base,
+            sourceAccountId,
+            targetAccountId,
+            currencyCode: source.currencyCode, // must match target in backend
+          };
+          return p;
+        })();
 
     try {
       const res = await fetch(API_TX, {
@@ -133,9 +158,9 @@ export function TransactionsPage() {
         // Standard error format { error, message }
         let message = await res.text();
         try {
-          const json = JSON.parse(message);
+          const json: { message?: string } = JSON.parse(message);
           if (json && json.message) message = json.message;
-        } catch {}
+        } catch (_parseErr) { void 0; }
         throw new Error(message);
       }
       setAmount(0);
@@ -221,4 +246,3 @@ export function TransactionsPage() {
     </div>
   );
 }
-
