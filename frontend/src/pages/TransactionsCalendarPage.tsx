@@ -11,6 +11,11 @@ interface TxItem {
   kind: Kind;
   amount: number;
   occurredAt: string; // ISO
+  accountId?: string | null;
+  sourceAccountId?: string | null;
+  targetAccountId?: string | null;
+  categoryId?: string | null;
+  notes?: string | null;
 }
 
 interface Account { id: string; name: string; currencyCode: string; archived: boolean; type: string; currentBalance: number; }
@@ -107,6 +112,19 @@ export function TransactionsCalendarPage() {
     for (const a of accounts) m.set(a.id, a);
     return m;
   }, [accounts]);
+
+  // Map categories id -> name
+  const categoryMap = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (nodes: CategoryNode[]) => {
+      for (const n of nodes) {
+        m.set(n.id, n.name);
+        if (n.children && n.children.length) walk(n.children);
+      }
+    };
+    walk(categories);
+    return m;
+  }, [categories]);
 
   const itemsOfSelectedDay = useMemo(() => {
     if (!selectedDate) return [] as TxItem[];
@@ -206,33 +224,36 @@ export function TransactionsCalendarPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', padding: 16, minWidth: 320 }}>
             <h3>建立交易（{selectedDate}）</h3>
-            {/* Existing items for the day */}
-            <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 8, border: '1px solid #eee', padding: 8 }}>
+            {/* Existing items for the day (summary list) */}
+            <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8, border: '1px solid #eee', padding: 8 }}>
               {itemsOfSelectedDay.length === 0 ? (
                 <div style={{ fontSize: 12, color: '#777' }}>當日尚無交易</div>
               ) : (
-                itemsOfSelectedDay.map((it) => {
-                  const color = it.kind === 'INCOME' ? '#138a36' : it.kind === 'EXPENSE' ? '#c62828' : '#1565c0';
-                  const sign = it.kind === 'INCOME' ? '+' : it.kind === 'EXPENSE' ? '-' : '';
-                  const src = it.kind === 'TRANSFER' && it['sourceAccountId' as keyof TxItem as any] ? accountMap.get((it as any).sourceAccountId as string)?.name : undefined;
-                  const dst = it.kind === 'TRANSFER' && it['targetAccountId' as keyof TxItem as any] ? accountMap.get((it as any).targetAccountId as string)?.name : undefined;
-                  const acc = it.kind !== 'TRANSFER' && it['accountId' as keyof TxItem as any] ? accountMap.get((it as any).accountId as string)?.name : undefined;
-                  return (
-                    <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid #f2f2f2' }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: `${color}20`, color }}>{it.kind}</span>
-                        <span style={{ fontSize: 12, color: '#555' }}>
-                          {it.kind === 'TRANSFER' ? (
-                            <>{src ?? '來源?'} → {dst ?? '目標?'}</>
-                          ) : (
-                            <>{acc ?? '帳戶?'}</>
-                          )}
-                        </span>
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 120px', gap: 8, fontSize: 12, fontWeight: 600, color: '#444', paddingBottom: 6, borderBottom: '1px solid #f2f2f2' }}>
+                    <div>金額</div>
+                    <div>類別</div>
+                    <div>帳戶/來源→目標</div>
+                    <div>使用者</div>
+                  </div>
+                  {itemsOfSelectedDay.map((it) => {
+                    const color = it.kind === 'INCOME' ? '#138a36' : it.kind === 'EXPENSE' ? '#c62828' : '#1565c0';
+                    const sign = it.kind === 'INCOME' ? '+' : it.kind === 'EXPENSE' ? '-' : '';
+                    const src = it.kind === 'TRANSFER' && it.sourceAccountId ? accountMap.get(it.sourceAccountId)?.name : undefined;
+                    const dst = it.kind === 'TRANSFER' && it.targetAccountId ? accountMap.get(it.targetAccountId)?.name : undefined;
+                    const acc = it.kind !== 'TRANSFER' && it.accountId ? accountMap.get(it.accountId)?.name : undefined;
+                    const cat = it.categoryId ? categoryMap.get(it.categoryId) : '';
+                    const userName = '';
+                    return (
+                      <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 120px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
+                        <div style={{ color, fontWeight: 700 }}>{sign}{it.amount.toLocaleString()}</div>
+                        <div>{cat || '—'}</div>
+                        <div>{it.kind === 'TRANSFER' ? (<>{src ?? '來源?'} → {dst ?? '目標?'}</>) : (acc ?? '帳戶?')}</div>
+                        <div>{userName}</div>
                       </div>
-                      <div style={{ color, fontWeight: 600 }}>{sign}{it.amount.toLocaleString()}</div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
             <div>
