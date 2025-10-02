@@ -108,6 +108,72 @@
 
 > 啟動時遇到問題？請參考 [本地開發設定指南](docs/local-setup-guide.md)。
 
+## 12.1 MVP：Transactions API（建立交易）
+
+本階段提供建立「收入 / 支出 / 轉帳」交易的 API（僅限單幣別）。
+
+- 端點：`POST /api/transactions`
+- 通用欄位：`userId`, `kind ∈ {INCOME,EXPENSE,TRANSFER}`, `amount>0`, `occurredAt(ISO8601)`, `notes?`, `currencyCode(3)`
+- 類型特定欄位：
+  - INCOME/EXPENSE：`accountId`（必填），`categoryId?`
+  - TRANSFER：`sourceAccountId` + `targetAccountId`（皆必填、且不可相同）
+
+範例請求：
+
+收入（INCOME）
+```json
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "kind": "INCOME",
+  "amount": 1000.00,
+  "occurredAt": "2025-01-01T00:00:00Z",
+  "accountId": "<ACCOUNT_ID>",
+  "categoryId": "<CATEGORY_ID>",
+  "notes": "Salary",
+  "currencyCode": "TWD"
+}
+```
+
+支出（EXPENSE）
+```json
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "kind": "EXPENSE",
+  "amount": 250.50,
+  "occurredAt": "2025-01-03T00:00:00Z",
+  "accountId": "<ACCOUNT_ID>",
+  "categoryId": "<CATEGORY_ID>",
+  "notes": "Lunch",
+  "currencyCode": "TWD"
+}
+```
+
+轉帳（TRANSFER）
+```json
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "kind": "TRANSFER",
+  "amount": 500.00,
+  "occurredAt": "2025-01-05T00:00:00Z",
+  "sourceAccountId": "<SRC_ACCOUNT_ID>",
+  "targetAccountId": "<DST_ACCOUNT_ID>",
+  "notes": "Move funds",
+  "currencyCode": "TWD"
+}
+```
+
+標準錯誤格式（例）：
+```json
+{
+  "error": "ValidationError",
+  "message": "來源帳戶與目標帳戶不可相同"
+}
+```
+
+限制（MVP）：
+- 僅支援單一幣別；跨幣交易會被 400 拒絕。
+- 信用卡特殊規則（結帳/繳款）尚未納入，先以一般加減計入帳戶餘額。
+
 ## 13. CI（持續整合）
 
 本倉庫使用 GitHub Actions 進行最小可行驗證（前後端分開、可並行）：
@@ -127,6 +193,7 @@
 ## 文件與連結
 - ADR-001：前後端技術棧決策 — docs/adr/ADR-001-tech-stack.md
 - ADR-002：部署策略 — docs/adr/ADR-002-deployment.md
+- Transactions API — docs/api/transactions.md
 - 技術草圖（C4-L1/L2/L3＋ERD）— docs/architecture/technical-sketch.md
 - Roadmap — docs/roadmap.md
 - Changelog — CHANGELOG.md
