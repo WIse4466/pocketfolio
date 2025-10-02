@@ -160,7 +160,7 @@ export function TransactionsPage() {
         try {
           const json: { message?: string } = JSON.parse(message);
           if (json && json.message) message = json.message;
-        } catch (_parseErr) { void 0; }
+        } catch { void 0; }
         throw new Error(message);
       }
       setAmount(0);
