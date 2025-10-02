@@ -47,3 +47,12 @@ services:
    ```
 
 不想刪除資料？請勿使用 `-v`，並手動比對/調整既有資料表結構；但此路徑需自行承擔資料不一致風險。
+
+## 新增：Transactions 交易表（V3）
+
+此版本新增 `V3__create_transactions.sql`（`transactions` 表）。若你先前有啟動過資料庫，Flyway 會自動套用 V3 遷移。若遇到遷移失敗或本地資料與新約束衝突，建議清空 volume 後重建：
+
+```bash
+docker-compose down -v
+docker-compose up -d --build
+```
