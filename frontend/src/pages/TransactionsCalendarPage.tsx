@@ -283,10 +283,10 @@ export function TransactionsCalendarPage() {
                   {itemsOfSelectedDay.map((it) => {
                     const color = it.kind === 'INCOME' ? '#138a36' : it.kind === 'EXPENSE' ? '#c62828' : '#1565c0';
                     const sign = it.kind === 'INCOME' ? '+' : it.kind === 'EXPENSE' ? '-' : '';
-                    const src = it.kind === 'TRANSFER' && it.sourceAccountId ? accountMap.get(it.sourceAccountId)?.name : undefined;
-                    const dst = it.kind === 'TRANSFER' && it.targetAccountId ? accountMap.get(it.targetAccountId)?.name : undefined;
-                    const acc = it.kind !== 'TRANSFER' && it.accountId ? accountMap.get(it.accountId)?.name : undefined;
-                    const cat = it.categoryId ? categoryMap.get(it.categoryId) : '';
+                    const src = it.kind === 'TRANSFER' && it.sourceAccountId ? (accountMap.get(it.sourceAccountId)?.name ?? (it.sourceAccountId.slice(0,8)+'…')) : undefined;
+                    const dst = it.kind === 'TRANSFER' && it.targetAccountId ? (accountMap.get(it.targetAccountId)?.name ?? (it.targetAccountId.slice(0,8)+'…')) : undefined;
+                    const acc = it.kind !== 'TRANSFER' && it.accountId ? (accountMap.get(it.accountId)?.name ?? (it.accountId.slice(0,8)+'…')) : undefined;
+                    const cat = it.categoryId ? (categoryMap.get(it.categoryId) ?? it.categoryId.slice(0,8)+'…') : '';
                     const userName = '';
                     return (
                       <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px 80px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
