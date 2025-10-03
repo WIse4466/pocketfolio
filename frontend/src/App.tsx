@@ -2,6 +2,7 @@ import './App.css';
 import { CategoryPage } from './pages/CategoryPage';
 import { AccountPage } from './pages/AccountPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { TransactionsCalendarPage } from './pages/TransactionsCalendarPage';
 import { useState, useEffect } from 'react';
 
 function App() {
@@ -19,6 +20,9 @@ function App() {
 
   let PageComponent;
   switch (currentPage) {
+    case '#/calendar':
+      PageComponent = TransactionsCalendarPage;
+      break;
     case '#/transactions':
       PageComponent = TransactionsPage;
       break;
@@ -36,7 +40,8 @@ function App() {
       <nav>
         <a href="#/categories">分類管理</a> |
         <a href="#/accounts">帳戶管理</a> |
-        <a href="#/transactions">交易</a>
+        <a href="#/transactions">交易</a> |
+        <a href="#/calendar">月曆</a>
       </nav>
       <hr />
       <PageComponent />
