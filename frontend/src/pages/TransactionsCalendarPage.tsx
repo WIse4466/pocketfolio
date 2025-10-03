@@ -205,7 +205,7 @@ export function TransactionsCalendarPage() {
       const data = await res2.json();
       const list: TxItem[] = (data.content ?? data) as TxItem[];
       setItems(list);
-    } catch {}
+    } catch (e) { console.error(e); }
   };
 
   const reloadMonth = async () => {
@@ -216,7 +216,7 @@ export function TransactionsCalendarPage() {
         const list: TxItem[] = (data.content ?? data) as TxItem[];
         setItems(list);
       }
-    } catch {}
+    } catch (e) { console.error(e); }
   };
 
   const deleteTx = async (id: string) => {
