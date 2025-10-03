@@ -264,7 +264,7 @@ export function TransactionsCalendarPage() {
 
       {open && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', padding: 16, minWidth: 320 }}>
+          <div style={{ background: '#fff', padding: 16, minWidth: 320, color: '#222' }}>
             <h3>建立交易（{selectedDate}）</h3>
             {/* Existing items for the day (summary list) */}
             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8, border: '1px solid #eee', padding: 8 }}>
@@ -272,7 +272,7 @@ export function TransactionsCalendarPage() {
                 <div style={{ fontSize: 12, color: '#777' }}>當日尚無交易</div>
               ) : (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px 80px', gap: 8, fontSize: 12, fontWeight: 600, color: '#333', paddingBottom: 6, borderBottom: '1px solid #f2f2f2' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px 80px', gap: 8, fontSize: 12, fontWeight: 600, color: '#222', paddingBottom: 6, borderBottom: '1px solid #f2f2f2' }}>
                     <div>金額</div>
                     <div>類別</div>
                     <div>帳戶/來源→目標</div>
@@ -291,10 +291,10 @@ export function TransactionsCalendarPage() {
                     return (
                       <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px 80px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
                         <div style={{ color, fontWeight: 700 }}>{sign}{it.amount.toLocaleString()}</div>
-                        <div>{cat || '—'}</div>
-                        <div>{it.kind === 'TRANSFER' ? (<>{src ?? '來源?'} → {dst ?? '目標?'}</>) : (acc ?? '帳戶?')}</div>
-                        <div style={{ color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.notes || '—'}</div>
-                        <div>{userName}</div>
+                        <div style={{ color: '#222' }}>{cat || '—'}</div>
+                        <div style={{ color: '#222' }}>{it.kind === 'TRANSFER' ? (<>{src ?? '來源?'} → {dst ?? '目標?'}</>) : (acc ?? '帳戶?')}</div>
+                        <div style={{ color: '#444', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.notes || '—'}</div>
+                        <div style={{ color: '#222' }}>{userName}</div>
                         <div>
                           <button onClick={() => deleteTx(it.id)} style={{ padding: '2px 6px', border: '1px solid #d32f2f', color: '#d32f2f', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>刪除</button>
                         </div>
