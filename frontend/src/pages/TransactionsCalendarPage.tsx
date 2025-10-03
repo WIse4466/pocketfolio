@@ -28,6 +28,18 @@ function toIsoStart(z: Date) { return new Date(Date.UTC(z.getFullYear(), z.getMo
 function toIsoNextDay(z: Date) { return new Date(Date.UTC(z.getFullYear(), z.getMonth(), z.getDate() + 1, 0, 0, 0)).toISOString(); }
 function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
+function flattenCategories(nodes: CategoryNode[]): { id: string; name: string; level: number }[] {
+  const out: { id: string; name: string; level: number }[] = [];
+  const walk = (arr: CategoryNode[], level: number) => {
+    for (const n of arr) {
+      out.push({ id: n.id, name: n.name, level });
+      if (n.children && n.children.length) walk(n.children, level + 1);
+    }
+  };
+  walk(nodes, 0);
+  return out;
+}
+
 export function TransactionsCalendarPage() {
   const [cursor, setCursor] = useState<Date>(startOfMonth(new Date()));
   const [items, setItems] = useState<TxItem[]>([]);
@@ -125,6 +137,8 @@ export function TransactionsCalendarPage() {
     walk(categories);
     return m;
   }, [categories]);
+
+  const flatCategoryOptions = useMemo(() => flattenCategories(categories), [categories]);
 
   const itemsOfSelectedDay = useMemo(() => {
     if (!selectedDate) return [] as TxItem[];
@@ -324,7 +338,9 @@ export function TransactionsCalendarPage() {
                 <label>分類（可選）：</label>
                 <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                   <option value="">-- 無 --</option>
-                  {/* 展平分類略，和 TransactionsPage 一致可後續抽共用 */}
+                  {flatCategoryOptions.map(c => (
+                    <option key={c.id} value={c.id}>{`${'--'.repeat(c.level)} ${c.name}`}</option>
+                  ))}
                 </select>
               </div>
             )}
