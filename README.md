@@ -108,15 +108,18 @@
 
 > 啟動時遇到問題？請參考 [本地開發設定指南](docs/local-setup-guide.md)。
 
-## 12.1 MVP：Transactions API（建立交易）
+## 12.1 MVP：Transactions API（建立/查詢/刪除）
 
-本階段提供建立「收入 / 支出 / 轉帳」交易的 API（僅限單幣別）。
+本階段提供「建立／查詢（區間）／刪除」交易的 API（MVP 僅單幣別）。完整說明見 docs/api/transactions.md。
 
-- 端點：`POST /api/transactions`
-- 通用欄位：`userId`, `kind ∈ {INCOME,EXPENSE,TRANSFER}`, `amount>0`, `occurredAt(ISO8601)`, `notes?`, `currencyCode(3)`
-- 類型特定欄位：
-  - INCOME/EXPENSE：`accountId`（必填），`categoryId?`
-  - TRANSFER：`sourceAccountId` + `targetAccountId`（皆必填、且不可相同）
+- 建立：`POST /api/transactions`
+- 查詢：`GET /api/transactions?from=&to=&page=&size=`（回傳 Page）
+- 刪除：`DELETE /api/transactions/{id}`（含餘額回沖）
+
+建立通用欄位：`userId`, `kind ∈ {INCOME,EXPENSE,TRANSFER}`, `amount>0`, `occurredAt(ISO8601)`, `notes?`, `currencyCode(3)`
+類型特定欄位：
+- INCOME/EXPENSE：`accountId`（必填），`categoryId?`
+- TRANSFER：`sourceAccountId` + `targetAccountId`（皆必填、且不可相同）
 
 範例請求：
 
