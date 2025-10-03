@@ -259,10 +259,38 @@ export function TransactionsCalendarPage() {
               )}
             </div>
             <div>
-              <label>類型：</label>
-              <label><input type="radio" name="kind" value="INCOME" checked={kind==='INCOME'} onChange={() => setKind('INCOME')} /> 收入</label>
-              <label><input type="radio" name="kind" value="EXPENSE" checked={kind==='EXPENSE'} onChange={() => setKind('EXPENSE')} /> 支出</label>
-              <label><input type="radio" name="kind" value="TRANSFER" checked={kind==='TRANSFER'} onChange={() => setKind('TRANSFER')} /> 轉帳</label>
+              <div style={{ marginBottom: 6, fontSize: 12, color: '#555' }}>交易類型：</div>
+              <div role="tablist" aria-label="交易類型" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                {([
+                  { key: 'INCOME' as Kind, label: '收入', symbol: '+', color: '#138a36' },
+                  { key: 'EXPENSE' as Kind, label: '支出', symbol: '−', color: '#c62828' },
+                  { key: 'TRANSFER' as Kind, label: '轉帳', symbol: '↔', color: '#1565c0' },
+                ]).map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={kind === opt.key}
+                    onClick={() => setKind(opt.key)}
+                    title={opt.label}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: kind === opt.key ? `2px solid ${opt.color}` : '1px solid #ccc',
+                      background: kind === opt.key ? `${opt.color}15` : '#fff',
+                      color: opt.color,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span aria-hidden>{opt.symbol}</span>
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label>金額：</label>
