@@ -230,10 +230,11 @@ export function TransactionsCalendarPage() {
                 <div style={{ fontSize: 12, color: '#777' }}>當日尚無交易</div>
               ) : (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 120px', gap: 8, fontSize: 12, fontWeight: 600, color: '#444', paddingBottom: 6, borderBottom: '1px solid #f2f2f2' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px', gap: 8, fontSize: 12, fontWeight: 600, color: '#333', paddingBottom: 6, borderBottom: '1px solid #f2f2f2' }}>
                     <div>金額</div>
                     <div>類別</div>
                     <div>帳戶/來源→目標</div>
+                    <div>備註</div>
                     <div>使用者</div>
                   </div>
                   {itemsOfSelectedDay.map((it) => {
@@ -245,10 +246,11 @@ export function TransactionsCalendarPage() {
                     const cat = it.categoryId ? categoryMap.get(it.categoryId) : '';
                     const userName = '';
                     return (
-                      <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 120px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
+                      <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
                         <div style={{ color, fontWeight: 700 }}>{sign}{it.amount.toLocaleString()}</div>
                         <div>{cat || '—'}</div>
                         <div>{it.kind === 'TRANSFER' ? (<>{src ?? '來源?'} → {dst ?? '目標?'}</>) : (acc ?? '帳戶?')}</div>
+                        <div style={{ color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.notes || '—'}</div>
                         <div>{userName}</div>
                       </div>
                     );
