@@ -208,6 +208,34 @@ export function TransactionsCalendarPage() {
     } catch {}
   };
 
+  const reloadMonth = async () => {
+    try {
+      const res = await fetch(`${API_TX}?from=${encodeURIComponent(fromISO)}&to=${encodeURIComponent(toISO)}&page=0&size=500`);
+      if (res.ok) {
+        const data = await res.json();
+        const list: TxItem[] = (data.content ?? data) as TxItem[];
+        setItems(list);
+      }
+    } catch {}
+  };
+
+  const deleteTx = async (id: string) => {
+    if (!confirm('確定要刪除這筆交易嗎？')) return;
+    try {
+      const res = await fetch(`${API_TX}/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        let message = await res.text();
+        try { const j: { message?: string } = JSON.parse(message); if (j.message) message = j.message; } catch { void 0; }
+        alert(`刪除失敗：${message}`);
+        return;
+      }
+      await reloadMonth();
+    } catch (e) {
+      console.error(e);
+      alert('刪除失敗');
+    }
+  };
+
   return (
     <div>
       <h1>交易月曆</h1>
@@ -265,7 +293,10 @@ export function TransactionsCalendarPage() {
                         <div>{cat || '—'}</div>
                         <div>{it.kind === 'TRANSFER' ? (<>{src ?? '來源?'} → {dst ?? '目標?'}</>) : (acc ?? '帳戶?')}</div>
                         <div style={{ color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.notes || '—'}</div>
-                        <div>{userName}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{userName}</span>
+                          <button onClick={() => deleteTx(it.id)} style={{ padding: '2px 6px', border: '1px solid #d32f2f', color: '#d32f2f', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>刪除</button>
+                        </div>
                       </div>
                     );
                   })}

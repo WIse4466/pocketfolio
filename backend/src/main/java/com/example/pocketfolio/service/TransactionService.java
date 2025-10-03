@@ -133,4 +133,42 @@ public class TransactionService {
         Instant end = (to != null) ? to : Instant.now();
         return transactionRepository.findByUserIdAndOccurredAtBetweenOrderByOccurredAtAsc(uid, start, end, pageable);
     }
+
+    @Transactional
+    public void deleteTransaction(UUID id) {
+        Transaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Transaction not found: " + id));
+
+        switch (tx.getKind()) {
+            case INCOME -> rollbackIncomeExpense(tx, true);
+            case EXPENSE -> rollbackIncomeExpense(tx, false);
+            case TRANSFER -> rollbackTransfer(tx);
+        }
+
+        transactionRepository.delete(tx);
+    }
+
+    private void rollbackIncomeExpense(Transaction tx, boolean wasIncome) {
+        Account account = tx.getAccount();
+        if (account == null) {
+            throw new IllegalStateException("Transaction missing account reference");
+        }
+        BigDecimal amount = tx.getAmount();
+        // Reverse of create: income added -> subtract; expense subtracted -> add
+        BigDecimal newBalance = account.getCurrentBalance();
+        newBalance = wasIncome ? newBalance.subtract(amount) : newBalance.add(amount);
+        account.setCurrentBalance(newBalance);
+    }
+
+    private void rollbackTransfer(Transaction tx) {
+        Account source = tx.getSourceAccount();
+        Account target = tx.getTargetAccount();
+        if (source == null || target == null) {
+            throw new IllegalStateException("Transfer transaction missing accounts");
+        }
+        BigDecimal amount = tx.getAmount();
+        // Reverse of create: source -= amount; target += amount
+        source.setCurrentBalance(source.getCurrentBalance().add(amount));
+        target.setCurrentBalance(target.getCurrentBalance().subtract(amount));
+    }
 }

@@ -62,4 +62,10 @@ public class TransactionController {
                 .fxRateUsed(tx.getFxRateUsed())
                 .build();
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        transactionService.deleteTransaction(id);
+        return ResponseEntity.noContent().build();
+    }
 }
