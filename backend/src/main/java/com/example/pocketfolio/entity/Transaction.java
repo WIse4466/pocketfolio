@@ -71,5 +71,15 @@ public class Transaction {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-}
 
+    @Transient
+    public boolean isCreditCardTransaction() {
+        if (account != null && account.getType() == AccountType.CREDIT_CARD) {
+            return true;
+        }
+        if (sourceAccount != null && sourceAccount.getType() == AccountType.CREDIT_CARD) {
+            return true;
+        }
+        return targetAccount != null && targetAccount.getType() == AccountType.CREDIT_CARD;
+    }
+}

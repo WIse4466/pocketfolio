@@ -19,6 +19,11 @@ services:
   backend:
     build:
       context: ./backend
+      network: host
+      args:
+        - HTTP_PROXY
+        - HTTPS_PROXY
+        - NO_PROXY
     container_name: pocketfolio-backend
     depends_on:
       db:
@@ -37,6 +42,11 @@ services:
   frontend:
     build:
       context: ./frontend
+      network: host
+      args:
+        - HTTP_PROXY
+        - HTTPS_PROXY
+        - NO_PROXY
     container_name: pocketfolio-frontend
     ports:
       - "5173:5173"

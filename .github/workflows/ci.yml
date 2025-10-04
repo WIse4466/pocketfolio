@@ -89,4 +89,12 @@ jobs:
             -v "$PWD/backend":/home/gradle/project \
             -w /home/gradle/project \
             gradle:8.8.0-jdk21 \
-            gradle test
+            gradle test --info
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/build/test-results
+            backend/build/reports/tests/test

@@ -1,0 +1,15 @@
+package com.example.pocketfolio.exception;
+
+public enum ErrorCode {
+    VALIDATION_ERROR,
+
+    ACCOUNT_NOT_FOUND,
+    CATEGORY_NOT_FOUND,
+    ACCOUNT_ARCHIVED,
+    SAME_ACCOUNT,
+
+    TRANSFER_DIRECTION_INVALID,
+    TRANSFER_PAIR_INVALID,
+    CROSS_CURRENCY_UNSUPPORTED
+}
+
