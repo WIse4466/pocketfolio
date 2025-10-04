@@ -3,6 +3,8 @@ package com.example.pocketfolio.service;
 import com.example.pocketfolio.dto.CreateTransactionRequest;
 import com.example.pocketfolio.entity.*;
 import com.example.pocketfolio.exception.NotFoundException;
+import com.example.pocketfolio.exception.BusinessException;
+import com.example.pocketfolio.exception.ErrorCode;
 import com.example.pocketfolio.repository.AccountRepository;
 import com.example.pocketfolio.repository.CategoryRepository;
 import com.example.pocketfolio.repository.TransactionRepository;
@@ -93,7 +95,7 @@ public class TransactionService {
             throw new IllegalArgumentException("sourceAccountId and targetAccountId are required for transfer");
         }
         if (Objects.equals(sourceId, targetId)) {
-            throw new IllegalArgumentException("來源帳戶與目標帳戶不可相同");
+            throw new BusinessException(ErrorCode.SAME_ACCOUNT, "來源帳戶與目標帳戶不可相同");
         }
 
         Account source = accountRepository.findById(sourceId)
@@ -102,12 +104,23 @@ public class TransactionService {
                 .orElseThrow(() -> new NotFoundException("Target account not found: " + targetId));
 
         if (source.isArchived() || target.isArchived()) {
-            throw new IllegalArgumentException("Source/Target account is archived and cannot accept transactions");
+            throw new BusinessException(ErrorCode.ACCOUNT_ARCHIVED, "Source/Target account is archived and cannot accept transactions");
         }
 
-        // MVP: only same currency transfers
+        // Credit card specific rules
+        boolean bothCreditCard = source.getType() == AccountType.CREDIT_CARD && target.getType() == AccountType.CREDIT_CARD;
+        if (bothCreditCard) {
+            throw new BusinessException(ErrorCode.TRANSFER_PAIR_INVALID, "Transfers between credit cards are not supported.");
+        }
+        if (source.getType() == AccountType.CREDIT_CARD) {
+            throw new BusinessException(ErrorCode.TRANSFER_DIRECTION_INVALID, "Transfers from a credit card are not supported.");
+        }
+
+        // MVP: only same currency transfers and tx currency must match accounts
         ensureSameCurrency(tx.getCurrencyCode(), source.getCurrencyCode());
-        ensureSameCurrency(source.getCurrencyCode(), target.getCurrencyCode());
+        if (source.getCurrencyCode() == null || target.getCurrencyCode() == null || !source.getCurrencyCode().equalsIgnoreCase(target.getCurrencyCode())) {
+            throw new BusinessException(ErrorCode.CROSS_CURRENCY_UNSUPPORTED, "Cross-currency transfers are not supported.");
+        }
 
         BigDecimal amount = tx.getAmount();
 
@@ -122,7 +135,7 @@ public class TransactionService {
 
     private void ensureSameCurrency(String a, String b) {
         if (a == null || b == null || !a.equalsIgnoreCase(b)) {
-            throw new IllegalArgumentException("跨幣別交易尚未支援（MVP 限單一幣別）");
+            throw new BusinessException(ErrorCode.CROSS_CURRENCY_UNSUPPORTED, "跨幣別交易尚未支援（MVP 限單一幣別）");
         }
     }
 

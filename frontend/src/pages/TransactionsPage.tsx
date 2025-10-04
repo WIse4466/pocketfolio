@@ -139,6 +139,14 @@ export function TransactionsPage() {
             alert('請選擇來源與目標帳戶');
             throw new Error('missing source/target');
           }
+          if (source.type === 'CREDIT_CARD' && target.type === 'CREDIT_CARD') {
+            alert('不支援信用卡之間的轉帳');
+            throw new Error('cc-to-cc transfer blocked');
+          }
+          if (source.type === 'CREDIT_CARD') {
+            alert('信用卡無法作為轉出帳戶');
+            throw new Error('cc as source blocked');
+          }
           const p: TransferPayload = {
             ...base,
             sourceAccountId,

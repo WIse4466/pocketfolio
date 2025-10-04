@@ -19,6 +19,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
+    private ResponseEntity<Map<String, Object>> build(HttpStatus status, String error, String code, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", error);
+        body.put("code", code);
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, "NotFound", ex.getMessage());
@@ -27,6 +35,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({IllegalArgumentException.class})
     public ResponseEntity<Map<String, Object>> handleValidation(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, "ValidationError", ex.getMessage());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleBusiness(BusinessException ex) {
+        String code = ex.getCode() != null ? ex.getCode().name() : "VALIDATION_ERROR";
+        return build(HttpStatus.BAD_REQUEST, "ValidationError", code, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -39,4 +53,3 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "ServerError", ex.getMessage());
     }
 }
-

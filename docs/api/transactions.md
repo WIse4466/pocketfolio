@@ -52,7 +52,7 @@ TRANSFER：
 
 `400 Bad Request` 等：
 ```json
-{ "error": "ValidationError", "message": "..." }
+{ "error": "ValidationError", "code": "...", "message": "..." }
 ```
 
 ### 商業規則（MVP）
@@ -140,3 +140,33 @@ DELETE /api/transactions/4a0e53dc-a0bb-4bd0-b0ab-99b5f8a04f84
 - `GET /api/transactions?from=&to=` 取得區間交易
 - idempotency key 防重複提交
 - 多幣別與匯率、信用卡結帳/扣款規則
+
+---
+
+## 信用卡特別規則（MVP）
+
+| 類型 | 行為 | 餘額變化 | 備註 |
+|------|------|-----------|------|
+| EXPENSE on CREDIT_CARD | 消費 | `current_balance -= amount` | 餘額更負 |
+| INCOME on CREDIT_CARD | 退款 | `current_balance += amount` | 餘額往 0 靠近 |
+| TRANSFER bank→credit_card | 還款 | `source -= amount`, `target += amount` | 允許 |
+| TRANSFER credit_card→bank | 無效 | 400 Forbidden | 不支援信用卡轉出 |
+| TRANSFER credit_card↔credit_card | 無效 | 400 Forbidden | 不支援信用卡間轉帳 |
+| TRANSFER 跨幣 | 無效 | 400 Forbidden | 不支援跨幣轉帳 |
+
+### 常見錯誤碼（`code`）
+
+- `TRANSFER_DIRECTION_INVALID`：信用卡作為轉出帳戶不被支援
+- `TRANSFER_PAIR_INVALID`：不支援信用卡間轉帳
+- `CROSS_CURRENCY_UNSUPPORTED`：不支援跨幣轉帳
+- `SAME_ACCOUNT`：來源與目標帳戶相同
+- `ACCOUNT_ARCHIVED`：來源或目標帳戶已封存
+
+錯誤回應格式：
+```json
+{
+  "error": "ValidationError",
+  "code": "TRANSFER_DIRECTION_INVALID",
+  "message": "Transfers from a credit card are not supported."
+}
+```
