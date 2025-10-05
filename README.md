@@ -200,6 +200,19 @@
 - ADR-002：部署策略 — docs/adr/ADR-002-deployment.md
 - Transactions API — docs/api/transactions.md
 - 技術草圖（C4-L1/L2/L3＋ERD）— docs/architecture/technical-sketch.md
+
+## 開發說明（指令備忘錄）
+- 主分支：`main`
+- 功能開發分支：`feature/<name>`，錯誤修正：`fix/<name>`
+- 常用指令：
+  - 啟動全服務：`docker-compose up -d --build`
+  - 停止：`docker-compose down`
+  - 後端單元測試：`cd backend && ./gradlew test --info`
+  - （選用）容器內跑後端測試：
+    `docker run --rm -v "$PWD/backend":/home/gradle/project -w /home/gradle/project gradle:8.8.0-jdk21 gradle test --info`
+  - 若遷移基準重整需清空本地 DB：`docker-compose down -v && docker-compose up -d --build`
+
+更多分支建議見：`docs/branching-strategy.md`
 - Roadmap — docs/roadmap.md
 - Changelog — CHANGELOG.md
 - DevOps 部署指南 — docs/devops/deployment-guide.md
