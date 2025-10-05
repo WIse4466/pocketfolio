@@ -22,7 +22,7 @@ interface Account {
     dueDay?: number;     // Optional
     autopayAccount?: Account; // Self-referencing, optional
     // New optional fields returned by backend after V4
-    dueMonthOffset?: number; // 0|1|2
+    dueMonthOffset?: 0 | 1 | 2; // 0|1|2
     dueHolidayPolicy?: 'NONE' | 'ADVANCE' | 'POSTPONE';
     autopayEnabled?: boolean;
     notes?: string;
@@ -218,7 +218,7 @@ export function AccountPage() {
             archived: acc.archived,
             closingDay: acc.closingDay ?? undefined,
             dueDay: acc.dueDay ?? undefined,
-            dueMonthOffset: acc.dueMonthOffset ?? 1,
+            dueMonthOffset: (acc.dueMonthOffset ?? 1) as 0 | 1 | 2,
             dueHolidayPolicy: acc.dueHolidayPolicy ?? 'NONE',
             autopayEnabled: (acc.autopayEnabled ?? false) || Boolean(acc.autopayAccount?.id),
             autopayAccountId: acc.autopayAccount?.id,
