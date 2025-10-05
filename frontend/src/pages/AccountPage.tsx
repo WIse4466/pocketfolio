@@ -214,9 +214,9 @@ export function AccountPage() {
             archived: acc.archived,
             closingDay: acc.closingDay ?? undefined,
             dueDay: acc.dueDay ?? undefined,
-            dueMonthOffset: 1, // default; backend not storing yet
-            dueHolidayPolicy: 'NONE', // default; backend not storing yet
-            autopayEnabled: Boolean(acc.autopayAccount?.id),
+            dueMonthOffset: (acc as any).dueMonthOffset ?? 1,
+            dueHolidayPolicy: (acc as any).dueHolidayPolicy ?? 'NONE',
+            autopayEnabled: (acc as any).autopayEnabled ?? Boolean(acc.autopayAccount?.id),
             autopayAccountId: acc.autopayAccount?.id,
             notes: acc.notes ?? '',
         });
