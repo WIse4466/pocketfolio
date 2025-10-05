@@ -161,7 +161,7 @@ export function TransactionsCalendarPage() {
   const openModal = (d: Date) => {
     setSelectedDate(ymd(d));
     setKind('INCOME');
-    setAmount(0);
+    setAmount('');
     setCategoryId('');
     setNotes('');
     setOpen(true);
