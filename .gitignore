@@ -4,3 +4,5 @@ node_modules
 .gradle
 build
 .DS_Store
+.idea/
+.iml
