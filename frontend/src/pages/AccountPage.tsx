@@ -33,7 +33,8 @@ export function AccountPage() {
         name: '',
         type: 'CASH' as AccountType, // Default to CASH
         currencyCode: 'TWD',
-        initialBalance: 0,
+        // 以字串狀態綁定，避免輸入時被強制成 0
+        initialBalanceInput: '' as string,
         includeInNetWorth: true,
         archived: false,
         closingDay: undefined as number | undefined,
@@ -68,11 +69,16 @@ export function AccountPage() {
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        let parsedValue: string | number | boolean | undefined = value;
+        let parsedValue: any = value;
 
         if (type === 'number') {
-            const n = parseFloat(value);
-            parsedValue = isNaN(n) ? 0 : n;
+            // 對於金額等可自由輸入，保留字串，避免強制 0
+            if (name === 'initialBalanceInput') {
+                parsedValue = value;
+            } else {
+                const n = parseFloat(value);
+                parsedValue = isNaN(n) ? undefined : n;
+            }
         } else if (type === 'checkbox') {
             parsedValue = (e.target as HTMLInputElement).checked;
         } else {
@@ -115,13 +121,14 @@ export function AccountPage() {
         // For now, hardcode userId. In a real app, this would come from auth context.
         const userId = '00000000-0000-0000-0000-000000000001'; 
 
+        const initialBalance = parseFloat(formData.initialBalanceInput || '0');
         const accountPayload = {
             userId,
             name: formData.name,
             type: formData.type,
             currencyCode: formData.currencyCode,
-            initialBalance: formData.initialBalance,
-            currentBalance: formData.initialBalance, // Current balance starts as initial balance
+            initialBalance: isNaN(initialBalance) ? 0 : initialBalance,
+            currentBalance: isNaN(initialBalance) ? 0 : initialBalance, // Current balance starts as initial balance
             includeInNetWorth: formData.includeInNetWorth,
             archived: formData.archived,
             closingDay: formData.type === 'CREDIT_CARD' ? (formData.closingDay || null) : null,
@@ -151,7 +158,7 @@ export function AccountPage() {
                 name: '',
                 type: 'CASH',
                 currencyCode: 'TWD',
-                initialBalance: 0,
+                initialBalanceInput: '',
                 includeInNetWorth: true,
                 archived: false,
                 closingDay: undefined,
@@ -202,7 +209,7 @@ export function AccountPage() {
             name: acc.name,
             type: acc.type as AccountType,
             currencyCode: acc.currencyCode,
-            initialBalance: acc.initialBalance ?? 0,
+            initialBalanceInput: (acc.initialBalance ?? 0).toString(),
             includeInNetWorth: acc.includeInNetWorth,
             archived: acc.archived,
             closingDay: acc.closingDay ?? undefined as any,
@@ -221,7 +228,7 @@ export function AccountPage() {
             name: '',
             type: 'CASH',
             currencyCode: 'TWD',
-            initialBalance: 0,
+            initialBalanceInput: '',
             includeInNetWorth: true,
             archived: false,
             closingDay: undefined,
@@ -256,8 +263,8 @@ export function AccountPage() {
                     <input id="currencyCode" name="currencyCode" type="text" value={formData.currencyCode} onChange={handleChange} required maxLength={3} />
                 </div>
                 <div>
-                    <label htmlFor="initialBalance">初始餘額：</label>
-                    <input id="initialBalance" name="initialBalance" type="number" value={formData.initialBalance} onChange={handleChange} required step="0.01" />
+                    <label htmlFor="initialBalanceInput">初始餘額：</label>
+                    <input id="initialBalanceInput" name="initialBalanceInput" type="number" value={formData.initialBalanceInput} onChange={handleChange} step="0.01" />
                 </div>
                 <div>
                     <label htmlFor="includeInNetWorth">計入淨資產：</label>
