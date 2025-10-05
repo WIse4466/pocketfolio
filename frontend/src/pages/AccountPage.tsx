@@ -69,7 +69,7 @@ export function AccountPage() {
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        let parsedValue: any = value;
+        let parsedValue: string | number | boolean | undefined = value;
 
         if (type === 'number') {
             // 對於金額等可自由輸入，保留字串，避免強制 0
@@ -212,14 +212,14 @@ export function AccountPage() {
             initialBalanceInput: (acc.initialBalance ?? 0).toString(),
             includeInNetWorth: acc.includeInNetWorth,
             archived: acc.archived,
-            closingDay: acc.closingDay ?? undefined as any,
-            dueDay: acc.dueDay ?? undefined as any,
+            closingDay: acc.closingDay ?? undefined,
+            dueDay: acc.dueDay ?? undefined,
             dueMonthOffset: 1, // default; backend not storing yet
             dueHolidayPolicy: 'NONE', // default; backend not storing yet
             autopayEnabled: Boolean(acc.autopayAccount?.id),
             autopayAccountId: acc.autopayAccount?.id,
             notes: acc.notes ?? '',
-        } as any);
+        });
     };
 
     const cancelEdit = () => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 
 const API_TX = 'http://localhost:8080/api/transactions';
 const API_ACCOUNTS = 'http://localhost:8080/api/accounts';
