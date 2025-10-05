@@ -160,7 +160,7 @@ export function TransactionsCalendarPage() {
 
   const openModal = (d: Date) => {
     setSelectedDate(ymd(d));
-    setKind('INCOME');
+    setKind('EXPENSE');
     setAmount('');
     setCategoryId('');
     setNotes('');
@@ -326,6 +326,7 @@ export function TransactionsCalendarPage() {
                     type="button"
                     role="tab"
                     aria-selected={kind === opt.key}
+                    autoFocus={opt.key === 'EXPENSE'}
                     onClick={() => setKind(opt.key)}
                     title={opt.label}
                     style={{
