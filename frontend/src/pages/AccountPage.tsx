@@ -37,6 +37,8 @@ export function AccountPage() {
         archived: false,
         closingDay: undefined as number | undefined,
         dueDay: undefined as number | undefined,
+        // UI-only: 繳款月份偏移（0=本月,1=下月,2=下下月）。目前後端尚未保存此欄位。
+        dueMonthOffset: 1 as 0 | 1 | 2, // 預設下月
         autopayAccountId: '' as string | undefined,
         notes: '',
     });
@@ -79,6 +81,7 @@ export function AccountPage() {
                 ...(nextType !== 'CREDIT_CARD' ? {
                     closingDay: undefined,
                     dueDay: undefined,
+                    dueMonthOffset: 1,
                     autopayAccountId: undefined,
                 } : {})
             }));
@@ -208,12 +211,31 @@ export function AccountPage() {
                 {formData.type === 'CREDIT_CARD' && (
                     <>
                         <div>
-                            <label htmlFor="closingDay">結帳日 (信用卡)：</label>
-                            <input id="closingDay" name="closingDay" type="number" value={formData.closingDay || ''} onChange={handleChange} min="1" max="31" />
+                            <label htmlFor="closingDay">結帳日 (1–31)：</label>
+                            <select id="closingDay" name="closingDay" value={formData.closingDay ?? ''} onChange={handleChange}>
+                                <option value="">-- 請選擇 --</option>
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
-                            <label htmlFor="dueDay">繳款日 (信用卡)：</label>
-                            <input id="dueDay" name="dueDay" type="number" value={formData.dueDay || ''} onChange={handleChange} min="1" max="31" />
+                            <label>繳款日：</label>
+                            <span style={{ marginRight: 8 }}>
+                                <select id="dueMonthOffset" name="dueMonthOffset" value={formData.dueMonthOffset} onChange={handleChange}>
+                                    <option value={0}>本月</option>
+                                    <option value={1}>下月</option>
+                                    <option value={2}>下下月</option>
+                                </select>
+                            </span>
+                            <span>
+                                <select id="dueDay" name="dueDay" value={formData.dueDay ?? ''} onChange={handleChange}>
+                                    <option value="">-- 日（1–31）--</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </select>
+                            </span>
                         </div>
                         <div>
                             <label htmlFor="autopayAccountId">自動繳款帳戶：</label>
