@@ -28,6 +28,7 @@ interface Account {
 
 export function AccountPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         type: 'CASH' as AccountType, // Default to CASH
@@ -114,7 +115,7 @@ export function AccountPage() {
         // For now, hardcode userId. In a real app, this would come from auth context.
         const userId = '00000000-0000-0000-0000-000000000001'; 
 
-        const accountToCreate = {
+        const accountPayload = {
             userId,
             name: formData.name,
             type: formData.type,
@@ -123,20 +124,21 @@ export function AccountPage() {
             currentBalance: formData.initialBalance, // Current balance starts as initial balance
             includeInNetWorth: formData.includeInNetWorth,
             archived: formData.archived,
-            closingDay: formData.closingDay || null, // Send null if undefined
-            dueDay: formData.dueDay || null,         // Send null if undefined
+            closingDay: formData.type === 'CREDIT_CARD' ? (formData.closingDay || null) : null,
+            dueDay: formData.type === 'CREDIT_CARD' ? (formData.dueDay || null) : null,
             // 僅在啟用自動繳款且選擇帳戶時才送 autopayAccount；否則送 null
-            autopayAccount: (formData.autopayEnabled && formData.autopayAccountId) ? { id: formData.autopayAccountId } : null,
+            autopayAccount: (formData.type === 'CREDIT_CARD' && formData.autopayEnabled && formData.autopayAccountId) ? { id: formData.autopayAccountId } : null,
             notes: formData.notes || null,
         };
 
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(accountToCreate),
+            const isEditing = Boolean(editingId);
+            const url = isEditing ? `${API_URL}/${editingId}` : API_URL;
+            const method = isEditing ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(accountPayload),
             });
 
             if (!response.ok) {
@@ -144,7 +146,7 @@ export function AccountPage() {
                 throw new Error(`後端錯誤: ${errorText}`);
             }
 
-            alert(`帳戶 "${formData.name}" 已成功建立！`);
+            alert(`帳戶 "${formData.name}" 已成功${editingId ? '更新' : '建立'}！`);
             setFormData({
                 name: '',
                 type: 'CASH',
@@ -154,9 +156,13 @@ export function AccountPage() {
                 archived: false,
                 closingDay: undefined,
                 dueDay: undefined,
+                dueMonthOffset: 1,
+                dueHolidayPolicy: 'NONE',
+                autopayEnabled: false,
                 autopayAccountId: undefined,
                 notes: '',
             });
+            setEditingId(null);
             fetchAccounts(); // Refresh the list
         } catch (error) {
             console.error('Error creating account:', error);
@@ -188,7 +194,45 @@ export function AccountPage() {
     };
 
     // Filter accounts for autopay dropdown (exclude credit cards and the account itself if editing)
-    const autopayOptions = accounts.filter(acc => acc.type !== 'CREDIT_CARD');
+    const autopayOptions = accounts.filter(acc => acc.type !== 'CREDIT_CARD' && (!editingId || acc.id !== editingId));
+
+    const startEdit = (acc: Account) => {
+        setEditingId(acc.id);
+        setFormData({
+            name: acc.name,
+            type: acc.type as AccountType,
+            currencyCode: acc.currencyCode,
+            initialBalance: acc.initialBalance ?? 0,
+            includeInNetWorth: acc.includeInNetWorth,
+            archived: acc.archived,
+            closingDay: acc.closingDay ?? undefined as any,
+            dueDay: acc.dueDay ?? undefined as any,
+            dueMonthOffset: 1, // default; backend not storing yet
+            dueHolidayPolicy: 'NONE', // default; backend not storing yet
+            autopayEnabled: Boolean(acc.autopayAccount?.id),
+            autopayAccountId: acc.autopayAccount?.id,
+            notes: acc.notes ?? '',
+        } as any);
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setFormData({
+            name: '',
+            type: 'CASH',
+            currencyCode: 'TWD',
+            initialBalance: 0,
+            includeInNetWorth: true,
+            archived: false,
+            closingDay: undefined,
+            dueDay: undefined,
+            dueMonthOffset: 1,
+            dueHolidayPolicy: 'NONE',
+            autopayEnabled: false,
+            autopayAccountId: undefined,
+            notes: '',
+        });
+    };
 
     return (
         <div>
@@ -282,7 +326,10 @@ export function AccountPage() {
                     <label htmlFor="notes">備註：</label>
                     <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} maxLength={500} />
                 </div>
-                <button type="submit">建立</button>
+                <button type="submit">{editingId ? '更新' : '建立'}</button>
+                {editingId && (
+                    <button type="button" onClick={cancelEdit} style={{ marginLeft: 8 }}>取消編輯</button>
+                )}
             </form>
 
             <hr />
@@ -295,6 +342,7 @@ export function AccountPage() {
                             {account.name} ({account.type}) - {account.currencyCode} {account.currentBalance.toFixed(2)}
                             {account.includeInNetWorth ? ' (計入淨資產)' : ' (不計入淨資產)'}
                             {account.archived && ' (已封存)'}
+                            <button onClick={() => startEdit(account)} style={{ marginLeft: 8 }}>編輯</button>
                             <button onClick={() => handleDelete(account.id)}>刪除</button>
                         </li>
                     ))}
