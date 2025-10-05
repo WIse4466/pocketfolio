@@ -67,13 +67,21 @@ export function AccountPage() {
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        let parsedValue: string | number | boolean = value;
+        let parsedValue: string | number | boolean | undefined = value;
 
         if (type === 'number') {
-            parsedValue = parseFloat(value);
-            if (isNaN(parsedValue)) parsedValue = 0; // Handle empty or invalid number input
+            const n = parseFloat(value);
+            parsedValue = isNaN(n) ? 0 : n;
         } else if (type === 'checkbox') {
             parsedValue = (e.target as HTMLInputElement).checked;
+        } else {
+            // select inputs: coerce specific fields to numbers
+            if (name === 'closingDay' || name === 'dueDay') {
+                parsedValue = value === '' ? undefined : parseInt(value, 10);
+            }
+            if (name === 'dueMonthOffset') {
+                parsedValue = parseInt(value, 10) as 0 | 1 | 2;
+            }
         }
 
         // When switching away from CREDIT_CARD, clear CC-specific fields
@@ -218,12 +226,13 @@ export function AccountPage() {
                 {formData.type === 'CREDIT_CARD' && (
                     <>
                         <div>
-                            <label htmlFor="closingDay">結帳日 (1–31)：</label>
+                            <label htmlFor="closingDay">結帳日：</label>
                             <select id="closingDay" name="closingDay" value={formData.closingDay ?? ''} onChange={handleChange}>
                                 <option value="">-- 請選擇 --</option>
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                                     <option key={d} value={d}>{d}</option>
                                 ))}
+                                <option value={31}>月末</option>
                             </select>
                         </div>
                         <div>
@@ -237,10 +246,11 @@ export function AccountPage() {
                             </span>
                             <span>
                                 <select id="dueDay" name="dueDay" value={formData.dueDay ?? ''} onChange={handleChange}>
-                                    <option value="">-- 日（1–31）--</option>
-                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                    <option value="">-- 日（1–28/月末）--</option>
+                                    {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                                         <option key={d} value={d}>{d}</option>
                                     ))}
+                                    <option value={31}>月末</option>
                                 </select>
                             </span>
                         </div>
