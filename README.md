@@ -199,6 +199,7 @@
 - ADR-001：前後端技術棧決策 — docs/adr/ADR-001-tech-stack.md
 - ADR-002：部署策略 — docs/adr/ADR-002-deployment.md
 - Transactions API — docs/api/transactions.md
+- Accounts API — docs/api/accounts.md
 - 技術草圖（C4-L1/L2/L3＋ERD）— docs/architecture/technical-sketch.md
 
 ## 開發說明（指令備忘錄）

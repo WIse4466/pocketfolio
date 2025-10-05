@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 This format follows Keep a Changelog and adheres to Semantic Versioning where practical.
 
 ## [Unreleased]
+### Added
+- DB/Flyway V4：`accounts` 新增 `due_month_offset(0/1/2)`, `due_holiday_policy(NONE|ADVANCE|POSTPONE)`, `autopay_enabled`。
+- 後端：`Account` 實體與 `AccountService` 驗證（DUE_MONTH_OFFSET_INVALID、DUE_HOLIDAY_POLICY_INVALID、AUTOPAY_NOT_SUPPORTED、AUTOPAY_ACCOUNT_INVALID、AUTOPAY_CONFLICT）。
+- 前端：帳戶管理頁送出並讀取上述欄位（信用卡時）。
+- Docs：`docs/api/accounts.md`、README 連結。
 
 ## 0.1.1 — 2025-10-01
 ### Added

@@ -60,6 +60,15 @@ public class Account {
     @JoinColumn(name = "autopay_account_id")
     private Account autopayAccount;
 
+    @Column(name = "due_month_offset", nullable = false)
+    private short dueMonthOffset = 1; // 0 current month, 1 next (default), 2 next next
+
+    @Column(name = "due_holiday_policy", nullable = false, length = 16)
+    private String dueHolidayPolicy = "NONE"; // NONE | ADVANCE | POSTPONE
+
+    @Column(name = "autopay_enabled", nullable = false)
+    private boolean autopayEnabled = false;
+
     @Column(name = "notes", length = 500)
     private String notes;
 
