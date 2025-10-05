@@ -21,6 +21,10 @@ interface Account {
     closingDay?: number; // Optional
     dueDay?: number;     // Optional
     autopayAccount?: Account; // Self-referencing, optional
+    // New optional fields returned by backend after V4
+    dueMonthOffset?: number; // 0|1|2
+    dueHolidayPolicy?: 'NONE' | 'ADVANCE' | 'POSTPONE';
+    autopayEnabled?: boolean;
     notes?: string;
     createdAt: string;
     updatedAt: string;
@@ -214,9 +218,9 @@ export function AccountPage() {
             archived: acc.archived,
             closingDay: acc.closingDay ?? undefined,
             dueDay: acc.dueDay ?? undefined,
-            dueMonthOffset: (acc as any).dueMonthOffset ?? 1,
-            dueHolidayPolicy: (acc as any).dueHolidayPolicy ?? 'NONE',
-            autopayEnabled: (acc as any).autopayEnabled ?? Boolean(acc.autopayAccount?.id),
+            dueMonthOffset: acc.dueMonthOffset ?? 1,
+            dueHolidayPolicy: acc.dueHolidayPolicy ?? 'NONE',
+            autopayEnabled: (acc.autopayEnabled ?? false) || Boolean(acc.autopayAccount?.id),
             autopayAccountId: acc.autopayAccount?.id,
             notes: acc.notes ?? '',
         });
