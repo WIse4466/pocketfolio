@@ -317,8 +317,8 @@ export function TransactionsCalendarPage() {
               <div style={{ marginBottom: 6, fontSize: 12, color: '#555' }}>交易類型：</div>
               <div role="tablist" aria-label="交易類型" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 {([
-                  { key: 'INCOME' as Kind, label: '收入', symbol: '+', color: '#138a36' },
                   { key: 'EXPENSE' as Kind, label: '支出', symbol: '−', color: '#c62828' },
+                  { key: 'INCOME' as Kind, label: '收入', symbol: '+', color: '#138a36' },
                   { key: 'TRANSFER' as Kind, label: '轉帳', symbol: '↔', color: '#1565c0' },
                 ]).map(opt => (
                   <button
