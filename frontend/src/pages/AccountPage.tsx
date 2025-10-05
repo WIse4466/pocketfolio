@@ -70,6 +70,21 @@ export function AccountPage() {
             parsedValue = (e.target as HTMLInputElement).checked;
         }
 
+        // When switching away from CREDIT_CARD, clear CC-specific fields
+        if (name === 'type') {
+            const nextType = parsedValue as AccountType;
+            setFormData(prev => ({
+                ...prev,
+                type: nextType,
+                ...(nextType !== 'CREDIT_CARD' ? {
+                    closingDay: undefined,
+                    dueDay: undefined,
+                    autopayAccountId: undefined,
+                } : {})
+            }));
+            return;
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: parsedValue
@@ -190,23 +205,27 @@ export function AccountPage() {
                     <label htmlFor="archived">已封存：</label>
                     <input id="archived" name="archived" type="checkbox" checked={formData.archived} onChange={handleChange} />
                 </div>
-                <div>
-                    <label htmlFor="closingDay">結帳日 (信用卡)：</label>
-                    <input id="closingDay" name="closingDay" type="number" value={formData.closingDay || ''} onChange={handleChange} min="1" max="31" />
-                </div>
-                <div>
-                    <label htmlFor="dueDay">繳款日 (信用卡)：</label>
-                    <input id="dueDay" name="dueDay" type="number" value={formData.dueDay || ''} onChange={handleChange} min="1" max="31" />
-                </div>
-                <div>
-                    <label htmlFor="autopayAccountId">自動繳款帳戶：</label>
-                    <select id="autopayAccountId" name="autopayAccountId" value={formData.autopayAccountId || ''} onChange={handleChange}>
-                        <option value="">-- 無 --</option>
-                        {autopayOptions.map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>
-                        ))}
-                    </select>
-                </div>
+                {formData.type === 'CREDIT_CARD' && (
+                    <>
+                        <div>
+                            <label htmlFor="closingDay">結帳日 (信用卡)：</label>
+                            <input id="closingDay" name="closingDay" type="number" value={formData.closingDay || ''} onChange={handleChange} min="1" max="31" />
+                        </div>
+                        <div>
+                            <label htmlFor="dueDay">繳款日 (信用卡)：</label>
+                            <input id="dueDay" name="dueDay" type="number" value={formData.dueDay || ''} onChange={handleChange} min="1" max="31" />
+                        </div>
+                        <div>
+                            <label htmlFor="autopayAccountId">自動繳款帳戶：</label>
+                            <select id="autopayAccountId" name="autopayAccountId" value={formData.autopayAccountId || ''} onChange={handleChange}>
+                                <option value="">-- 無 --</option>
+                                {autopayOptions.map(acc => (
+                                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>
+                                ))}
+                            </select>
+                        </div>
+                    </>
+                )}
                 <div>
                     <label htmlFor="notes">備註：</label>
                     <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} maxLength={500} />
