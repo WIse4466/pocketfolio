@@ -43,7 +43,7 @@ function flattenCategories(categories: CategoryNode[]): { id: string; name: stri
 }
 
 export function TransactionsPage() {
-  const [kind, setKind] = useState<Kind>('INCOME');
+  const [kind, setKind] = useState<Kind>('EXPENSE');
   const [date, setDate] = useState<string>(todayStr());
   const [amount, setAmount] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
@@ -191,8 +191,8 @@ export function TransactionsPage() {
         </div>
         <div>
           <label>類型：</label>
+          <label><input type="radio" name="kind" value="EXPENSE" checked={kind==='EXPENSE'} onChange={() => setKind('EXPENSE')} autoFocus /> 支出</label>
           <label><input type="radio" name="kind" value="INCOME" checked={kind==='INCOME'} onChange={() => setKind('INCOME')} /> 收入</label>
-          <label><input type="radio" name="kind" value="EXPENSE" checked={kind==='EXPENSE'} onChange={() => setKind('EXPENSE')} /> 支出</label>
           <label><input type="radio" name="kind" value="TRANSFER" checked={kind==='TRANSFER'} onChange={() => setKind('TRANSFER')} /> 轉帳</label>
         </div>
         <div>
