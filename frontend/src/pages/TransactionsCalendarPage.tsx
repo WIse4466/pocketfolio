@@ -51,7 +51,7 @@ export function TransactionsCalendarPage() {
 
   // Form state (lightweight, similar to TransactionsPage)
   const [kind, setKind] = useState<Kind>('INCOME');
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
   const [sourceAccountId, setSourceAccountId] = useState<string>('');
   const [targetAccountId, setTargetAccountId] = useState<string>('');
@@ -160,15 +160,16 @@ export function TransactionsCalendarPage() {
 
   const openModal = (d: Date) => {
     setSelectedDate(ymd(d));
-    setKind('INCOME');
-    setAmount(0);
+    setKind('EXPENSE');
+    setAmount('');
     setCategoryId('');
     setNotes('');
     setOpen(true);
   };
 
   const createTx = async () => {
-    if (amount <= 0) { alert('金額需大於 0'); return; }
+    const amountNum = parseFloat(amount);
+    if (!amount || isNaN(amountNum) || amountNum <= 0) { alert('金額需大於 0'); return; }
     const userId = '00000000-0000-0000-0000-000000000001';
     const occurredAt = new Date(`${selectedDate}T00:00:00`).toISOString();
     const findAcc = (id: string) => accounts.find(a => a.id === id);
@@ -177,7 +178,7 @@ export function TransactionsCalendarPage() {
     type IncomeExpensePayload = BasePayload & { currencyCode: string; accountId: string; categoryId?: string };
     type TransferPayload = BasePayload & { currencyCode: string; sourceAccountId: string; targetAccountId: string };
 
-    const base: BasePayload = { userId, kind, amount, occurredAt, notes: notes || null };
+    const base: BasePayload = { userId, kind, amount: amountNum, occurredAt, notes: notes || null };
     const payload: IncomeExpensePayload | TransferPayload = (kind === 'INCOME' || kind === 'EXPENSE')
       ? (() => {
           const acc = findAcc(accountId);
@@ -316,8 +317,8 @@ export function TransactionsCalendarPage() {
               <div style={{ marginBottom: 6, fontSize: 12, color: '#555' }}>交易類型：</div>
               <div role="tablist" aria-label="交易類型" style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 {([
-                  { key: 'INCOME' as Kind, label: '收入', symbol: '+', color: '#138a36' },
                   { key: 'EXPENSE' as Kind, label: '支出', symbol: '−', color: '#c62828' },
+                  { key: 'INCOME' as Kind, label: '收入', symbol: '+', color: '#138a36' },
                   { key: 'TRANSFER' as Kind, label: '轉帳', symbol: '↔', color: '#1565c0' },
                 ]).map(opt => (
                   <button
@@ -325,6 +326,7 @@ export function TransactionsCalendarPage() {
                     type="button"
                     role="tab"
                     aria-selected={kind === opt.key}
+                    autoFocus={opt.key === 'EXPENSE'}
                     onClick={() => setKind(opt.key)}
                     title={opt.label}
                     style={{
@@ -348,7 +350,7 @@ export function TransactionsCalendarPage() {
             </div>
             <div>
               <label>金額：</label>
-              <input type="number" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value || '0'))} step="0.01" min="0.01" />
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} step="0.01" min="0.01" />
             </div>
             {kind !== 'TRANSFER' ? (
               <div>
