@@ -39,6 +39,10 @@ export function AccountPage() {
         dueDay: undefined as number | undefined,
         // UI-only: 繳款月份偏移（0=本月,1=下月,2=下下月）。目前後端尚未保存此欄位。
         dueMonthOffset: 1 as 0 | 1 | 2, // 預設下月
+        // UI-only: 繳款日假日調整策略（NONE=不調整, ADVANCE=提前, POSTPONE=順延）
+        dueHolidayPolicy: 'NONE' as 'NONE' | 'ADVANCE' | 'POSTPONE',
+        // UI-only: 是否啟用自動繳款（若啟用才會送 autopayAccount）
+        autopayEnabled: false,
         autopayAccountId: '' as string | undefined,
         notes: '',
     });
@@ -82,6 +86,8 @@ export function AccountPage() {
                     closingDay: undefined,
                     dueDay: undefined,
                     dueMonthOffset: 1,
+                    dueHolidayPolicy: 'NONE' as const,
+                    autopayEnabled: false,
                     autopayAccountId: undefined,
                 } : {})
             }));
@@ -111,7 +117,8 @@ export function AccountPage() {
             archived: formData.archived,
             closingDay: formData.closingDay || null, // Send null if undefined
             dueDay: formData.dueDay || null,         // Send null if undefined
-            autopayAccount: formData.autopayAccountId ? { id: formData.autopayAccountId } : null, // Only send ID
+            // 僅在啟用自動繳款且選擇帳戶時才送 autopayAccount；否則送 null
+            autopayAccount: (formData.autopayEnabled && formData.autopayAccountId) ? { id: formData.autopayAccountId } : null,
             notes: formData.notes || null,
         };
 
@@ -238,8 +245,21 @@ export function AccountPage() {
                             </span>
                         </div>
                         <div>
+                            <label htmlFor="dueHolidayPolicy">繳款日假日調整：</label>
+                            <select id="dueHolidayPolicy" name="dueHolidayPolicy" value={formData.dueHolidayPolicy} onChange={handleChange}>
+                                <option value="NONE">不調整</option>
+                                <option value="ADVANCE">提前至最近工作日</option>
+                                <option value="POSTPONE">順延至下一工作日</option>
+                            </select>
+                            <span style={{ marginLeft: 8, fontSize: 12, color: '#666' }}>(目前僅前端設定，後端未保存)</span>
+                        </div>
+                        <div>
+                            <label htmlFor="autopayEnabled">啟用自動繳款：</label>
+                            <input id="autopayEnabled" name="autopayEnabled" type="checkbox" checked={formData.autopayEnabled} onChange={handleChange} />
+                        </div>
+                        <div>
                             <label htmlFor="autopayAccountId">自動繳款帳戶：</label>
-                            <select id="autopayAccountId" name="autopayAccountId" value={formData.autopayAccountId || ''} onChange={handleChange}>
+                            <select id="autopayAccountId" name="autopayAccountId" value={formData.autopayAccountId || ''} onChange={handleChange} disabled={!formData.autopayEnabled}>
                                 <option value="">-- 無 --</option>
                                 {autopayOptions.map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>
