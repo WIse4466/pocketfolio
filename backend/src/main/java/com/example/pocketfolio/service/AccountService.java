@@ -22,7 +22,8 @@ public class AccountService {
     @Transactional
     public Account createAccount(Account account) {
         normalizeDueFields(account);
-        validateDueFieldsOnType(account.getType(), account.getDueMonthOffset(), account.getDueHolidayPolicy(), account.isAutopayEnabled(), account.getAutopayAccount());
+        boolean enabledForValidation = account.isAutopayEnabled() || account.getAutopayAccount() != null;
+        validateDueFieldsOnType(account.getType(), account.getDueMonthOffset(), account.getDueHolidayPolicy(), enabledForValidation, account.getAutopayAccount());
         // Basic validation for autopayAccount to prevent circular references
         if (account.getAutopayAccount() != null) {
             Account autopayAccount = accountRepository.findById(account.getAutopayAccount().getId())
@@ -84,7 +85,8 @@ public class AccountService {
         short offset = normalizedOffset(updatedAccount.getDueMonthOffset());
         String policy = normalizedPolicy(updatedAccount.getDueHolidayPolicy());
         boolean autopayEnabled = updatedAccount.isAutopayEnabled();
-        validateDueFieldsOnType(existingAccount.getType(), offset, policy, autopayEnabled, updatedAccount.getAutopayAccount());
+        boolean enabledForValidation = autopayEnabled || updatedAccount.getAutopayAccount() != null;
+        validateDueFieldsOnType(existingAccount.getType(), offset, policy, enabledForValidation, updatedAccount.getAutopayAccount());
         existingAccount.setDueMonthOffset(offset);
         existingAccount.setDueHolidayPolicy(policy);
         existingAccount.setAutopayEnabled(autopayEnabled);
