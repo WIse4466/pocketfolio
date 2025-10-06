@@ -10,7 +10,7 @@ Last synced: 2025-09-14
 ## 使用者敘述與驗收（AC）
 - Given 信用卡設定好結帳/扣款日與預設扣款帳戶；When 到扣款日（依假日策略調整）；Then 系統建立轉帳交易，沖銷本期負債。
 
-## 規則與邊界
+## 規則與邊界（MVP 實作節錄）
 - 結帳邏輯：計算結帳區間內「未入前期帳單」的信用卡消費合計，生成當期帳單（可查閱/匯出）。
 - 扣款邏輯：扣款日建立轉帳交易（扣款帳戶 → 信用卡）。不足額時允許部分沖銷，餘額遞延。
 - 狀態：`statement.status ∈ {open, closed, paid, partial}`；交易需與 `statement_id` 關聯以利對帳。
@@ -22,9 +22,13 @@ Last synced: 2025-09-14
 - API：
   - POST `/credit-cards/{id}/statements/close`（手動結帳）
   - POST `/credit-cards/{id}/statements/{sid}/autopay`（重試自動扣款）
+  
+  MVP 已提供等效端點：
+  - `POST /api/billing/credit-cards/{accountId}/close?date=YYYY-MM-DD`
+  - `POST /api/billing/autopay?date=YYYY-MM-DD`
 
 ## 排程與冪等
-- 每日 00:10 執行結帳/扣款掃描（cron，Asia/Taipei）。
+- 每日 00:20 執行扣款掃描（cron，Asia/Taipei）。
 - 冪等 key：`statement_id + run_window`；重跑不得重複生成轉帳。
 
 ## 例外 / 錯誤
