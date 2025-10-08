@@ -25,6 +25,7 @@ public class TransactionServiceTest {
     private AccountRepository accountRepository;
     private CategoryRepository categoryRepository;
     private TransactionService service;
+    private BillingService billingService;
 
     private final Map<UUID, Account> accounts = new HashMap<>();
     private final Map<UUID, Transaction> store = new HashMap<>();
@@ -34,7 +35,8 @@ public class TransactionServiceTest {
         transactionRepository = mock(TransactionRepository.class);
         accountRepository = mock(AccountRepository.class);
         categoryRepository = mock(CategoryRepository.class);
-        service = new TransactionService(transactionRepository, accountRepository, categoryRepository);
+        billingService = mock(BillingService.class);
+        service = new TransactionService(transactionRepository, accountRepository, categoryRepository, billingService);
 
         // repo behavior
         when(accountRepository.findById(ArgumentMatchers.any(UUID.class))).thenAnswer((Answer<Optional<Account>>) invocation -> {
@@ -191,4 +193,3 @@ public class TransactionServiceTest {
         assertEquals(new BigDecimal("50.00"), card.getCurrentBalance());
     }
 }
-
