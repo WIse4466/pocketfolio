@@ -64,6 +64,14 @@ public class Transaction {
     @Column(name = "fx_rate_used", precision = 18, scale = 6)
     private BigDecimal fxRateUsed;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private TransactionStatus status = TransactionStatus.POSTED;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "statement_id")
+    private Statement statement;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

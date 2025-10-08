@@ -20,6 +20,9 @@ interface Account {
     archived: boolean;
     closingDay?: number; // Optional
     dueDay?: number;     // Optional
+    // After backend DTOization, API returns autopayAccountId instead of nested account
+    autopayAccountId?: string;
+    // For backward compat (older responses), keep optional nested
     autopayAccount?: Account; // Self-referencing, optional
     // New optional fields returned by backend after V4
     dueMonthOffset?: 0 | 1 | 2; // 0|1|2
@@ -220,8 +223,8 @@ export function AccountPage() {
             dueDay: acc.dueDay ?? undefined,
             dueMonthOffset: (acc.dueMonthOffset ?? 1) as 0 | 1 | 2,
             dueHolidayPolicy: acc.dueHolidayPolicy ?? 'NONE',
-            autopayEnabled: (acc.autopayEnabled ?? false) || Boolean(acc.autopayAccount?.id),
-            autopayAccountId: acc.autopayAccount?.id,
+            autopayEnabled: (acc.autopayEnabled ?? false) || Boolean(acc.autopayAccountId ?? acc.autopayAccount?.id),
+            autopayAccountId: acc.autopayAccountId ?? acc.autopayAccount?.id,
             notes: acc.notes ?? '',
         });
     };

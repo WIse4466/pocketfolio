@@ -9,6 +9,7 @@ This format follows Keep a Changelog and adheres to Semantic Versioning where pr
 - 後端：`Account` 實體與 `AccountService` 驗證（DUE_MONTH_OFFSET_INVALID、DUE_HOLIDAY_POLICY_INVALID、AUTOPAY_NOT_SUPPORTED、AUTOPAY_ACCOUNT_INVALID、AUTOPAY_CONFLICT）。
 - 前端：帳戶管理頁送出並讀取上述欄位（信用卡時）。
 - Docs：`docs/api/accounts.md`、README 連結。
+ - DB/Flyway V5：新增 `statements` 表；結帳與自動扣款 MVP（手動結帳端點、每日 00:20 自動扣款）。
 
 ## 0.1.1 — 2025-10-01
 ### Added

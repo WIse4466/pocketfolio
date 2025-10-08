@@ -18,6 +18,8 @@ interface TxItem {
   notes?: string | null;
 }
 
+// Planned/posted autopay are returned in transactions; no separate StatementItem needed
+
 interface Account { id: string; name: string; currencyCode: string; archived: boolean; type: string; currentBalance: number; }
 interface CategoryNode { id: string; name: string; children?: CategoryNode[] }
 
@@ -59,6 +61,7 @@ export function TransactionsCalendarPage() {
   const [notes, setNotes] = useState<string>('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
+  // No separate plans state; rely solely on transactions
 
   const monthStart = startOfMonth(cursor);
   const monthEnd = endOfMonth(cursor);
