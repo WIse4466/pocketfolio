@@ -1,6 +1,5 @@
 package com.example.pocketfolio.service;
 
-import com.example.pocketfolio.dto.CreateTransactionRequest;
 import com.example.pocketfolio.entity.*;
 import com.example.pocketfolio.exception.NotFoundException;
 import com.example.pocketfolio.repository.AccountRepository;
@@ -22,7 +21,7 @@ public class BillingService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final StatementRepository statementRepository;
-    private final TransactionService transactionService;
+    // Removed dependency on TransactionService to avoid circular refs; we persist transactions directly here
 
     @Transactional
     public Statement closeForAccountOnDate(UUID accountId, LocalDate closingDate) {
@@ -64,7 +63,11 @@ public class BillingService {
         stmt.setDueDate(dueDate);
         stmt.setBalance(balance);
         stmt.setStatus(StatementStatus.CLOSED);
-        return statementRepository.save(stmt);
+        Statement saved = statementRepository.save(stmt);
+
+        // If there is an open planned statement existing (from ensureOpen), carry over plannedTx
+        // For MVP, we assume plannedTx will be (re)created at period open by ensureOpenStatement
+        return saved;
     }
 
     @Transactional
@@ -85,34 +88,116 @@ public class BillingService {
         List<Statement> due = statementRepository.findByDueDateAndStatus(today, StatementStatus.CLOSED);
         for (Statement s : due) {
             Account card = s.getAccount();
+            BigDecimal amount = s.getBalance();
+
+            // Use planned transaction if exists; if not, create one now
+            Transaction planned = s.getPlannedTx();
+            if (planned == null && card.isAutopayEnabled() && card.getAutopayAccount() != null) {
+                planned = createPlannedTxForStatement(s, today);
+            }
+
+            if (planned != null) {
+                // Update amount to current balance
+                planned.setAmount(amount);
+                transactionRepository.save(planned);
+            }
+
             if (!card.isAutopayEnabled() || card.getAutopayAccount() == null) continue;
             Account src = card.getAutopayAccount();
-            BigDecimal amount = s.getBalance();
             if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                 s.setStatus(StatementStatus.PAID);
                 statementRepository.save(s);
                 continue;
             }
+
             BigDecimal available = src.getCurrentBalance();
             BigDecimal pay = available.min(amount);
             if (pay.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-            CreateTransactionRequest req = new CreateTransactionRequest();
-            req.setUserId(card.getUserId());
-            req.setKind(TransactionKind.TRANSFER);
-            req.setAmount(pay);
-            req.setOccurredAt(today.atStartOfDay(ZoneOffset.UTC).toInstant());
-            req.setSourceAccountId(src.getId());
-            req.setTargetAccountId(card.getId());
-            req.setNotes("Autopay statement");
-            req.setCurrencyCode(card.getCurrencyCode());
-            transactionService.createTransaction(req);
+            // Post the planned transaction (or create a posted one)
+            Transaction payment = (planned != null) ? planned : new Transaction();
+            payment.setUserId(card.getUserId());
+            payment.setKind(TransactionKind.TRANSFER);
+            payment.setAmount(pay);
+            payment.setOccurredAt(today.atStartOfDay(ZoneOffset.UTC).toInstant());
+            payment.setSourceAccount(src);
+            payment.setTargetAccount(card);
+            payment.setNotes("Autopay statement");
+            payment.setCurrencyCode(card.getCurrencyCode());
+            payment.setStatus(TransactionStatus.POSTED);
+            payment.setStatement(s);
+            transactionRepository.save(payment);
 
+            // Adjust balances now
+            src.setCurrentBalance(src.getCurrentBalance().subtract(pay));
+            card.setCurrentBalance(card.getCurrentBalance().add(pay));
+
+            s.setPaidTx(payment);
             BigDecimal remaining = amount.subtract(pay);
             s.setBalance(remaining);
             s.setStatus(remaining.compareTo(BigDecimal.ZERO) == 0 ? StatementStatus.PAID : StatementStatus.PARTIAL);
             statementRepository.save(s);
         }
+    }
+
+    @Transactional
+    public Statement ensureOpenStatement(Account card, LocalDate closingDate) {
+        LocalDate prevClosing = previousClosingDate(closingDate, card.getClosingDay());
+        LocalDate periodStart = prevClosing.plusDays(1);
+        LocalDate periodEnd = closingDate;
+        LocalDate dueDate = computeDueDate(closingDate, card.getDueMonthOffset(), card.getDueDay(), card.getDueHolidayPolicy());
+
+        // Check if already exists
+        List<Statement> existing = statementRepository.findByAccountIdAndClosingDate(card.getId(), closingDate);
+        if (!existing.isEmpty()) return existing.getFirst();
+
+        Statement stmt = new Statement();
+        stmt.setAccount(card);
+        stmt.setPeriodStart(periodStart);
+        stmt.setPeriodEnd(periodEnd);
+        stmt.setClosingDate(closingDate);
+        stmt.setDueDate(dueDate);
+        stmt.setBalance(BigDecimal.ZERO);
+        stmt.setStatus(StatementStatus.OPEN);
+        Statement saved = statementRepository.save(stmt);
+
+        if (card.isAutopayEnabled() && card.getAutopayAccount() != null) {
+            Transaction planned = new Transaction();
+            planned.setUserId(card.getUserId());
+            planned.setKind(TransactionKind.TRANSFER);
+            planned.setAmount(BigDecimal.ZERO);
+            planned.setOccurredAt(dueDate.atStartOfDay(ZoneOffset.UTC).toInstant());
+            planned.setSourceAccount(card.getAutopayAccount());
+            planned.setTargetAccount(card);
+            planned.setNotes("Planned autopay");
+            planned.setCurrencyCode(card.getCurrencyCode());
+            planned.setStatus(TransactionStatus.PENDING);
+            planned.setStatement(saved);
+            transactionRepository.save(planned);
+            saved.setPlannedTx(planned);
+            statementRepository.save(saved);
+        }
+        return saved;
+    }
+
+    private Transaction createPlannedTxForStatement(Statement s, LocalDate today) {
+        Account card = s.getAccount();
+        if (!card.isAutopayEnabled() || card.getAutopayAccount() == null) return null;
+        Transaction planned = new Transaction();
+        planned.setUserId(card.getUserId());
+        planned.setKind(TransactionKind.TRANSFER);
+        planned.setAmount(s.getBalance());
+        planned.setOccurredAt(s.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant());
+        planned.setSourceAccount(card.getAutopayAccount());
+        planned.setTargetAccount(card);
+        planned.setNotes("Planned autopay");
+        planned.setCurrencyCode(card.getCurrencyCode());
+        planned.setStatus(TransactionStatus.PENDING);
+        planned.setStatement(s);
+        Transaction saved = transactionRepository.save(planned);
+        s.setPlannedTx(saved);
+        statementRepository.save(s);
+        return saved;
     }
 
     // Utilities

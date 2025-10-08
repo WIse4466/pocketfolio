@@ -48,6 +48,14 @@ public class Statement {
     @Column(name = "status", nullable = false, length = 16)
     private StatementStatus status;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "planned_tx_id")
+    private Transaction plannedTx;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paid_tx_id")
+    private Transaction paidTx;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -56,4 +64,3 @@ public class Statement {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }
-

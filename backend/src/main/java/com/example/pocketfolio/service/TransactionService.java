@@ -26,6 +26,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final BillingService billingService;
 
     @Transactional
     public Transaction createTransaction(CreateTransactionRequest req) {
@@ -53,6 +54,7 @@ public class TransactionService {
         tx.setNotes(req.getNotes());
         tx.setCurrencyCode(req.getCurrencyCode());
         tx.setFxRateUsed(req.getFxRateUsed());
+        tx.setStatus(TransactionStatus.POSTED);
 
         if (req.getCategoryId() != null) {
             Category category = categoryRepository.findById(req.getCategoryId())
@@ -66,7 +68,9 @@ public class TransactionService {
             case TRANSFER -> handleTransfer(tx, req.getSourceAccountId(), req.getTargetAccountId());
         }
 
-        return transactionRepository.save(tx);
+        Transaction saved = transactionRepository.save(tx);
+        tryUpdateRelatedStatement(saved);
+        return saved;
     }
 
     private void handleIncomeExpense(Transaction tx, UUID accountId, boolean isIncome) {
@@ -159,6 +163,7 @@ public class TransactionService {
         }
 
         transactionRepository.delete(tx);
+        tryUpdateRelatedStatement(tx);
     }
 
     private void rollbackIncomeExpense(Transaction tx, boolean wasIncome) {
@@ -183,5 +188,33 @@ public class TransactionService {
         // Reverse of create: source -= amount; target += amount
         source.setCurrentBalance(source.getCurrentBalance().add(amount));
         target.setCurrentBalance(target.getCurrentBalance().subtract(amount));
+    }
+
+    private void tryUpdateRelatedStatement(Transaction tx) {
+        // Only consider income/expense on credit card accounts
+        if (tx.getKind() != TransactionKind.INCOME && tx.getKind() != TransactionKind.EXPENSE) return;
+        Account acc = tx.getAccount();
+        if (acc == null || acc.getType() != AccountType.CREDIT_CARD) return;
+        Integer cd = acc.getClosingDay();
+        if (cd == null) return;
+        Instant occ = tx.getOccurredAt();
+        java.time.LocalDate d = occ.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        java.time.LocalDate closing = computeClosingDateFor(acc, d);
+        billingService.ensureOpenStatement(acc, closing);
+    }
+
+    private java.time.LocalDate computeClosingDateFor(Account card, java.time.LocalDate date) {
+        int cd = card.getClosingDay() != null ? card.getClosingDay() : 31;
+        int dom = Math.min(cd, date.lengthOfMonth());
+        java.time.LocalDate thisClosing = java.time.LocalDate.of(date.getYear(), date.getMonth(), dom);
+        if (cd == 31 && date.getDayOfMonth() == date.lengthOfMonth()) {
+            thisClosing = date;
+        }
+        if (!date.isAfter(thisClosing)) {
+            return thisClosing;
+        }
+        java.time.LocalDate next = date.plusMonths(1);
+        int ndom = Math.min(cd, next.lengthOfMonth());
+        return java.time.LocalDate.of(next.getYear(), next.getMonth(), ndom);
     }
 }
