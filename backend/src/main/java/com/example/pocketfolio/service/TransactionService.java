@@ -200,7 +200,69 @@ public class TransactionService {
         Instant occ = tx.getOccurredAt();
         java.time.LocalDate d = occ.atZone(java.time.ZoneOffset.UTC).toLocalDate();
         java.time.LocalDate closing = computeClosingDateFor(acc, d);
-        billingService.ensureOpenStatement(acc, closing);
+        // Ensure statement exists
+        com.example.pocketfolio.entity.Statement stmt = billingService.ensureOpenStatement(acc, closing);
+        // Recalculate balance for the period and update planned payment
+        java.time.LocalDate prevClosing = com.example.pocketfolio.service.BillingService.previousClosingDate(closing, acc.getClosingDay());
+        java.time.LocalDate periodStart = prevClosing.plusDays(1);
+        java.time.LocalDate periodEnd = closing;
+        java.time.Instant start = periodStart.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        java.time.Instant end = periodEnd.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        java.util.List<Transaction> list = transactionRepository.findByAccount_IdAndOccurredAtBetween(acc.getId(), start, end);
+        java.math.BigDecimal balance = java.math.BigDecimal.ZERO;
+        for (Transaction t : list) {
+            if (t.getKind() == TransactionKind.EXPENSE) balance = balance.add(t.getAmount());
+            else if (t.getKind() == TransactionKind.INCOME) balance = balance.subtract(t.getAmount());
+        }
+        // Case 1: still pending planned payment -> keep planned amount in sync with current balance
+        if (stmt.getPlannedTx() != null && stmt.getPlannedTx().getStatus() == TransactionStatus.PENDING) {
+            Transaction planned = stmt.getPlannedTx();
+            planned.setAmount(balance);
+            transactionRepository.save(planned);
+            stmt.setBalance(balance);
+        }
+        // Case 2: payment already posted on due date -> adjust in-place and fix balances
+        else if (stmt.getPaidTx() != null && stmt.getPaidTx().getStatus() == TransactionStatus.POSTED) {
+            Transaction paid = stmt.getPaidTx();
+            java.math.BigDecimal currentPaid = paid.getAmount();
+            java.math.BigDecimal delta = balance.subtract(currentPaid); // desired total - paid
+            if (delta.compareTo(java.math.BigDecimal.ZERO) != 0) {
+                Account src = paid.getSourceAccount();
+                Account cardAcc = paid.getTargetAccount();
+                if (delta.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    // need to increase paid amount by up to available source balance
+                    java.math.BigDecimal inc = src.getCurrentBalance().min(delta);
+                    if (inc.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                        paid.setAmount(currentPaid.add(inc));
+                        transactionRepository.save(paid);
+                        src.setCurrentBalance(src.getCurrentBalance().subtract(inc));
+                        cardAcc.setCurrentBalance(cardAcc.getCurrentBalance().add(inc));
+                    }
+                    java.math.BigDecimal remaining = balance.subtract(paid.getAmount());
+                    stmt.setBalance(remaining.max(java.math.BigDecimal.ZERO));
+                    stmt.setStatus(remaining.compareTo(java.math.BigDecimal.ZERO) == 0 ? StatementStatus.PAID : StatementStatus.PARTIAL);
+                } else {
+                    // delta < 0: total decreased -> refund the difference by decreasing paid amount
+                    java.math.BigDecimal dec = delta.abs();
+                    paid.setAmount(currentPaid.subtract(dec));
+                    transactionRepository.save(paid);
+                    // move funds back
+                    src.setCurrentBalance(src.getCurrentBalance().add(dec));
+                    cardAcc.setCurrentBalance(cardAcc.getCurrentBalance().subtract(dec));
+                    stmt.setBalance(java.math.BigDecimal.ZERO);
+                    stmt.setStatus(StatementStatus.PAID);
+                }
+            } else {
+                // amounts equal, ensure status reflects no remaining
+                stmt.setBalance(java.math.BigDecimal.ZERO);
+                stmt.setStatus(StatementStatus.PAID);
+            }
+        } else {
+            // No planned/paid linked yet; keep balance on statement for visibility
+            stmt.setBalance(balance);
+        }
+        // Persist updated statement
+        // Use repository through billingService dependencies, here we rely on transactional context
     }
 
     private java.time.LocalDate computeClosingDateFor(Account card, java.time.LocalDate date) {
