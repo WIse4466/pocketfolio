@@ -15,12 +15,11 @@ public class BillingScheduler {
 
     private static final ZoneId TAIPEI = ZoneId.of("Asia/Taipei");
 
-    // Daily close at 00:10 TPE (for cards whose closingDay == today.day)
+    // Daily close at 00:10 TPE: for cards whose closingDay == today.day (31 means month end)
     @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Taipei")
     public void dailyClose() {
         LocalDate today = LocalDate.now(TAIPEI);
-        // In MVP, we rely on manual trigger per account; optional batch close can be added later
-        // Here we do nothing to avoid scanning all accounts. Endpoint allows manual close per account.
+        billingService.autoCloseForDay(today);
     }
 
     // Daily autopay at 00:20 TPE for due statements
@@ -30,4 +29,3 @@ public class BillingScheduler {
         billingService.autopayDueStatements(today);
     }
 }
-

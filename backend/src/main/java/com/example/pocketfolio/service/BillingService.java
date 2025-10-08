@@ -68,6 +68,19 @@ public class BillingService {
     }
 
     @Transactional
+    public void autoCloseForDay(LocalDate today) {
+        // Find all credit cards and close those matching today as closing day (with 31 as month-end)
+        for (Account card : accountRepository.findByType(AccountType.CREDIT_CARD)) {
+            Integer cd = card.getClosingDay();
+            if (cd == null) continue;
+            boolean isMonthEnd = today.getDayOfMonth() == today.lengthOfMonth();
+            if ((cd == 31 && isMonthEnd) || (cd != 31 && today.getDayOfMonth() == cd)) {
+                closeForAccountOnDate(card.getId(), today);
+            }
+        }
+    }
+
+    @Transactional
     public void autopayDueStatements(LocalDate today) {
         List<Statement> due = statementRepository.findByDueDateAndStatus(today, StatementStatus.CLOSED);
         for (Statement s : due) {
@@ -140,4 +153,3 @@ public class BillingService {
         return date;
     }
 }
-

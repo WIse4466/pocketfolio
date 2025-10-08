@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const API_TX = 'http://localhost:8080/api/transactions';
+const API_STM = 'http://localhost:8080/api/billing/statements';
 const API_ACCOUNTS = 'http://localhost:8080/api/accounts';
 const API_CATEGORIES = 'http://localhost:8080/api/categories';
 
@@ -16,6 +17,14 @@ interface TxItem {
   targetAccountId?: string | null;
   categoryId?: string | null;
   notes?: string | null;
+}
+
+interface StatementItem {
+  id: string;
+  account: { id: string } | null; // backend currently returns entity; DTOization could be added later
+  dueDate: string; // ISO date
+  balance: number;
+  status: 'OPEN' | 'CLOSED' | 'PAID' | 'PARTIAL';
 }
 
 interface Account { id: string; name: string; currencyCode: string; archived: boolean; type: string; currentBalance: number; }
@@ -59,6 +68,7 @@ export function TransactionsCalendarPage() {
   const [notes, setNotes] = useState<string>('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
+  const [plans, setPlans] = useState<StatementItem[]>([]);
 
   const monthStart = startOfMonth(cursor);
   const monthEnd = endOfMonth(cursor);
@@ -74,6 +84,16 @@ export function TransactionsCalendarPage() {
         const data = await res.json();
         const list: TxItem[] = (data.content ?? data) as TxItem[]; // support Page or array
         setItems(list);
+        // Fetch planned statements (due within this month window)
+        const fromDate = fromISO.substring(0, 10);
+        const toDate = toISO.substring(0, 10);
+        const res2 = await fetch(`${API_STM}?from=${fromDate}&to=${toDate}`);
+        if (res2.ok) {
+          const stm: StatementItem[] = await res2.json();
+          setPlans(stm);
+        } else {
+          setPlans([]);
+        }
       } catch (e) {
         console.error(e);
         alert('載入交易失敗');
@@ -114,6 +134,11 @@ export function TransactionsCalendarPage() {
       const d = new Date(it.occurredAt);
       const key = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
       map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    for (const p of plans) {
+      const d = new Date(p.dueDate);
+      const key = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+      map.set(key, (map.get(key) ?? 0) + 0); // don't count as transaction, but ensure key exists
     }
     return map;
   }, [items]);
@@ -262,10 +287,17 @@ export function TransactionsCalendarPage() {
           if (!cell.date) return <div key={idx} />;
           const label = ymd(cell.date);
           const count = countsByDay.get(label) ?? 0;
+          const hasPlan = plans.some(p => {
+            const dd = new Date(p.dueDate);
+            return ymd(new Date(dd.getFullYear(), dd.getMonth(), dd.getDate())) === label && (p.status === 'CLOSED' || p.status === 'PARTIAL');
+          });
           return (
             <div key={idx} style={{ border: '1px solid #ddd', padding: '6px', minHeight: '60px', cursor: 'pointer' }} onClick={() => openModal(cell.date!)}>
               <div style={{ fontSize: '12px', opacity: 0.8 }}>{cell.date.getDate()}</div>
               <div style={{ fontSize: '12px' }}>{count > 0 ? `${count} 筆` : ''}</div>
+              {hasPlan && (
+                <div style={{ marginTop: 4, fontSize: 11, color: '#1565c0' }}>預備扣款</div>
+              )}
             </div>
           );
         })}
@@ -277,7 +309,7 @@ export function TransactionsCalendarPage() {
             <h3>建立交易（{selectedDate}）</h3>
             {/* Existing items for the day (summary list) */}
             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8, border: '1px solid #eee', padding: 8 }}>
-              {itemsOfSelectedDay.length === 0 ? (
+              {itemsOfSelectedDay.length === 0 && plans.filter(p => ymd(new Date(p.dueDate)) === selectedDate && (p.status === 'CLOSED' || p.status === 'PARTIAL')).length === 0 ? (
                 <div style={{ fontSize: 12, color: '#777' }}>當日尚無交易</div>
               ) : (
                 <div>
@@ -289,6 +321,17 @@ export function TransactionsCalendarPage() {
                     <div>使用者</div>
                     <div>操作</div>
                   </div>
+                  {/* Planned statements first */}
+                  {plans.filter(p => ymd(new Date(p.dueDate)) === selectedDate && (p.status === 'CLOSED' || p.status === 'PARTIAL')).map(p => (
+                    <div key={`plan-${p.id}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 120px 80px', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f7f7f7' }}>
+                      <div style={{ color: '#1565c0', fontWeight: 700 }}>{p.balance.toLocaleString()}</div>
+                      <div style={{ color: '#222' }}>預備扣款</div>
+                      <div style={{ color: '#222' }}>扣款帳戶 → 信用卡</div>
+                      <div style={{ color: '#444' }}>{p.status === 'PARTIAL' ? '前期部分未清' : ''}</div>
+                      <div style={{ color: '#222' }}></div>
+                      <div style={{ color: '#888' }}>預備</div>
+                    </div>
+                  ))}
                   {itemsOfSelectedDay.map((it) => {
                     const color = it.kind === 'INCOME' ? '#138a36' : it.kind === 'EXPENSE' ? '#c62828' : '#1565c0';
                     const sign = it.kind === 'INCOME' ? '+' : it.kind === 'EXPENSE' ? '-' : '';
