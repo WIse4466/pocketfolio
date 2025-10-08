@@ -18,13 +18,7 @@ interface TxItem {
   notes?: string | null;
 }
 
-interface StatementItem {
-  id: string;
-  account: { id: string } | null; // backend currently returns entity; DTOization could be added later
-  dueDate: string; // ISO date
-  balance: number;
-  status: 'OPEN' | 'CLOSED' | 'PAID' | 'PARTIAL';
-}
+// Planned/posted autopay are returned in transactions; no separate StatementItem needed
 
 interface Account { id: string; name: string; currencyCode: string; archived: boolean; type: string; currentBalance: number; }
 interface CategoryNode { id: string; name: string; children?: CategoryNode[] }
@@ -67,7 +61,7 @@ export function TransactionsCalendarPage() {
   const [notes, setNotes] = useState<string>('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
-  const [plans, setPlans] = useState<StatementItem[]>([]);
+  // No separate plans state; rely solely on transactions
 
   const monthStart = startOfMonth(cursor);
   const monthEnd = endOfMonth(cursor);
@@ -83,16 +77,6 @@ export function TransactionsCalendarPage() {
         const data = await res.json();
         const list: TxItem[] = (data.content ?? data) as TxItem[]; // support Page or array
         setItems(list);
-        // Fetch planned statements (due within this month window)
-        const fromDate = fromISO.substring(0, 10);
-        const toDate = toISO.substring(0, 10);
-        const res2 = await fetch(`${API_STM}?from=${fromDate}&to=${toDate}`);
-        if (res2.ok) {
-          const stm: StatementItem[] = await res2.json();
-          setPlans(stm);
-        } else {
-          setPlans([]);
-        }
       } catch (e) {
         console.error(e);
         alert('載入交易失敗');
