@@ -7,6 +7,8 @@ const API_TX = apiUrl('/api/transactions');
 const API_ACCOUNTS = apiUrl('/api/accounts');
 const API_CATEGORIES = apiUrl('/api/categories');
 const API_BUDGET_SUMMARY = (ym: string) => apiUrl(`/api/budgets/summary?month=${ym}`);
+const API_BUDGET_TOTAL = (ym: string, limit: number) => apiUrl(`/api/budgets/total?month=${ym}&limit=${encodeURIComponent(limit)}`);
+const API_BUDGET_CATEGORY = (ym: string, categoryId: string, limit: number) => apiUrl(`/api/budgets/category?categoryId=${encodeURIComponent(categoryId)}&month=${ym}&limit=${encodeURIComponent(limit)}`);
 
 function ymOfDate(dateStr: string) {
   // dateStr: YYYY-MM-DD
@@ -65,6 +67,9 @@ export function TransactionsPage() {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
   const [budgetInfo, setBudgetInfo] = useState<{ totalLimit: number; totalSpent: number; overspend: boolean } | null>(null);
+  const [totalLimitInput, setTotalLimitInput] = useState<string>("");
+  const [categoryBudgetId, setCategoryBudgetId] = useState<string>("");
+  const [categoryLimitInput, setCategoryLimitInput] = useState<string>("");
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -100,11 +105,38 @@ export function TransactionsPage() {
         const res = await fetch(API_BUDGET_SUMMARY(ym));
         if (!res.ok) return;
         const data = await res.json();
-        setBudgetInfo({ totalLimit: data.totalLimit ?? 0, totalSpent: data.totalSpent ?? 0, overspend: !!data.overspend });
+        const info = { totalLimit: Number(data.totalLimit ?? 0), totalSpent: Number(data.totalSpent ?? 0), overspend: !!data.overspend };
+        setBudgetInfo(info);
+        setTotalLimitInput(info.totalLimit > 0 ? String(info.totalLimit) : "");
       } catch { /* ignore */ }
     };
     loadBudget();
   }, [date]);
+
+  const saveTotalBudget = async () => {
+    const n = parseFloat(totalLimitInput || "0");
+    if (!isFinite(n) || n < 0) { alert('請輸入有效的預算金額'); return; }
+    const ym = ymOfDate(date);
+    const res = await fetch(API_BUDGET_TOTAL(ym, n), { method: 'PUT' });
+    if (!res.ok) { const t = await res.text(); alert(`設定失敗：${t}`); return; }
+    alert('本月總預算已更新');
+    // reload summary
+    const s = await fetch(API_BUDGET_SUMMARY(ym));
+    if (s.ok) {
+      const data = await s.json();
+      setBudgetInfo({ totalLimit: Number(data.totalLimit ?? 0), totalSpent: Number(data.totalSpent ?? 0), overspend: !!data.overspend });
+    }
+  };
+
+  const saveCategoryBudget = async () => {
+    if (!categoryBudgetId) { alert('請選擇分類'); return; }
+    const n = parseFloat(categoryLimitInput || "0");
+    if (!isFinite(n) || n < 0) { alert('請輸入有效的分類預算金額'); return; }
+    const ym = ymOfDate(date);
+    const res = await fetch(API_BUDGET_CATEGORY(ym, categoryBudgetId, n), { method: 'PUT' });
+    if (!res.ok) { const t = await res.text(); alert(`設定失敗：${t}`); return; }
+    alert('分類預算已更新');
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -217,6 +249,26 @@ export function TransactionsPage() {
           本月預算：{budgetInfo.totalLimit.toFixed(2)}，已用：{budgetInfo.totalSpent.toFixed(2)}{budgetInfo.overspend ? '（已超支）' : ''}
         </div>
       )}
+      {/* 預算設定（本月） */}
+      <div style={{ border: '1px solid #ddd', padding: 10, marginBottom: 12 }}>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>預算設定（{ymOfDate(date)}）</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label>本月總預算：</label>
+          <input type="number" step="0.01" value={totalLimitInput} onChange={(e) => setTotalLimitInput(e.target.value)} style={{ width: 120 }} />
+          <button type="button" onClick={saveTotalBudget}>儲存</button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          <label>分類預算：</label>
+          <select value={categoryBudgetId} onChange={(e) => setCategoryBudgetId(e.target.value)}>
+            <option value="">-- 選擇分類 --</option>
+            {flatCategories.map(c => (
+              <option key={c.id} value={c.id}>{'--'.repeat(c.level)} {c.name}</option>
+            ))}
+          </select>
+          <input type="number" step="0.01" value={categoryLimitInput} onChange={(e) => setCategoryLimitInput(e.target.value)} style={{ width: 120 }} />
+          <button type="button" onClick={saveCategoryBudget}>儲存</button>
+        </div>
+      </div>
       <h1>建立交易</h1>
       <form onSubmit={onSubmit}>
         <div>
