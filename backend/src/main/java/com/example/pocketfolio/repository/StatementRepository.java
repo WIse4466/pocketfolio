@@ -16,4 +16,5 @@ public interface StatementRepository extends JpaRepository<Statement, UUID> {
     List<Statement> findByDueDateAndStatus(LocalDate dueDate, StatementStatus status);
     List<Statement> findByDueDateBetween(LocalDate from, LocalDate to);
     List<Statement> findByDueDateBetweenAndAccountId(LocalDate from, LocalDate to, UUID accountId);
+    long countByAccountId(UUID accountId);
 }

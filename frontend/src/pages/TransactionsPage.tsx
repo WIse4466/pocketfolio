@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { apiUrl } from '../lib/api';
+import { tpeMidnightIso } from '../lib/time';
 import type { FormEvent } from 'react';
 
-const API_TX = 'http://localhost:8080/api/transactions';
-const API_ACCOUNTS = 'http://localhost:8080/api/accounts';
-const API_CATEGORIES = 'http://localhost:8080/api/categories';
+const API_TX = apiUrl('/api/transactions');
+const API_ACCOUNTS = apiUrl('/api/accounts');
+const API_CATEGORIES = apiUrl('/api/categories');
 
 type Kind = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
@@ -94,7 +96,7 @@ export function TransactionsPage() {
     // Hardcoded user for MVP
     const userId = '00000000-0000-0000-0000-000000000001';
 
-    const occurredAt = new Date(`${date}T00:00:00`).toISOString();
+    const occurredAt = tpeMidnightIso(date);
 
     const findAcc = (id: string) => accounts.find(a => a.id === id);
 

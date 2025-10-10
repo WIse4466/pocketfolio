@@ -16,4 +16,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     // Traverse nested property: account.id
     List<Transaction> findByAccount_IdAndOccurredAtBetween(UUID accountId, Instant from, Instant to);
+
+    long countByAccount_Id(UUID accountId);
+    long countBySourceAccount_Id(UUID accountId);
+    long countByTargetAccount_Id(UUID accountId);
+
+    long countByStatement_IdAndStatus(UUID statementId, com.example.pocketfolio.entity.TransactionStatus status);
 }

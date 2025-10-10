@@ -4,6 +4,8 @@ import { AccountPage } from './pages/AccountPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { TransactionsCalendarPage } from './pages/TransactionsCalendarPage';
 import { useState, useEffect } from 'react';
+import { StatementsPage } from './pages/StatementsPage';
+import { API_BASE } from './lib/api';
 
 function App() {
   const [currentPage, setCurrentPage] = useState(window.location.hash);
@@ -20,6 +22,9 @@ function App() {
 
   let PageComponent;
   switch (currentPage) {
+    case '#/statements':
+      PageComponent = StatementsPage;
+      break;
     case '#/calendar':
       PageComponent = TransactionsCalendarPage;
       break;
@@ -41,7 +46,9 @@ function App() {
         <a href="#/categories">分類管理</a> |
         <a href="#/accounts">帳戶管理</a> |
         <a href="#/transactions">交易</a> |
-        <a href="#/calendar">月曆</a>
+        <a href="#/calendar">月曆</a> |
+        <a href="#/statements">帳單</a> |
+        <a href={`${API_BASE}/api/exports/csv?v=1`} target="_blank" rel="noreferrer">下載 CSV</a>
       </nav>
       <hr />
       <PageComponent />

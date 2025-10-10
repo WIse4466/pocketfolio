@@ -103,6 +103,12 @@ public class BillingService {
             }
 
             if (!card.isAutopayEnabled() || card.getAutopayAccount() == null) continue;
+            // Idempotency: avoid creating multiple posted payments for same statement
+            long postedCount = transactionRepository.countByStatement_IdAndStatus(s.getId(), TransactionStatus.POSTED);
+            if (postedCount > 0) {
+                // Already processed earlier (or manually posted); skip creating a duplicate
+                continue;
+            }
             Account src = card.getAutopayAccount();
             if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                 s.setStatus(StatementStatus.PAID);
