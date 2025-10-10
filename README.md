@@ -110,7 +110,19 @@
 
 > 啟動時遇到問題？請參考 [本地開發設定指南](docs/local-setup-guide.md)。
 
-## 12.1 MVP：Transactions API（建立/查詢/刪除）
+### 12.1 前端 API Base URL（本地開發）
+
+前端會從 `VITE_API_BASE_URL` 讀取後端位址，未設定時預設為 `http://localhost:8080`。
+
+在本地不透過 Docker 直接執行前端時，可在 `frontend/.env.local` 設定：
+
+```
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+Docker Compose 啟動時已在 `frontend` 服務注入相同環境變數，無需額外設定。
+
+## 12.2 MVP：Transactions API（建立/查詢/刪除）
 
 本階段提供「建立／查詢（區間）／刪除」交易的 API（MVP 僅單幣別）。完整說明見 docs/api/transactions.md。
 

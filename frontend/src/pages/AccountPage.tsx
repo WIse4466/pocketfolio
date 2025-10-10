@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 import type { FormEvent, ChangeEvent } from 'react';
 
-const API_URL = 'http://localhost:8080/api/accounts';
+const API_URL = apiUrl('/api/accounts');
 
 // Account type as string union to satisfy `erasableSyntaxOnly`
 const ACCOUNT_TYPES = ['CASH','BANK','CREDIT_CARD','E_WALLET','INVESTMENT'] as const;

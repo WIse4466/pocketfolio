@@ -4,6 +4,8 @@ import com.example.pocketfolio.entity.Account;
 import com.example.pocketfolio.entity.AccountType;
 import com.example.pocketfolio.exception.BusinessException;
 import com.example.pocketfolio.repository.AccountRepository;
+import com.example.pocketfolio.repository.TransactionRepository;
+import com.example.pocketfolio.repository.StatementRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,12 +20,16 @@ import static org.mockito.Mockito.*;
 public class AccountServiceTest {
 
     private AccountRepository accountRepository;
+    private TransactionRepository transactionRepository;
+    private StatementRepository statementRepository;
     private AccountService service;
 
     @BeforeEach
     void setup() {
         accountRepository = mock(AccountRepository.class);
-        service = new AccountService(accountRepository);
+        transactionRepository = mock(TransactionRepository.class);
+        statementRepository = mock(StatementRepository.class);
+        service = new AccountService(accountRepository, transactionRepository, statementRepository);
         when(accountRepository.save(any(Account.class))).thenAnswer(inv -> inv.getArgument(0));
         when(accountRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
     }
@@ -73,4 +79,3 @@ public class AccountServiceTest {
         assertTrue(ex.getMessage().contains("NONE"));
     }
 }
-

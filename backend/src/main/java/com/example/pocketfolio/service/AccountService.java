@@ -5,6 +5,8 @@ import com.example.pocketfolio.entity.AccountType;
 import com.example.pocketfolio.exception.BusinessException;
 import com.example.pocketfolio.exception.ErrorCode;
 import com.example.pocketfolio.repository.AccountRepository;
+import com.example.pocketfolio.repository.TransactionRepository;
+import com.example.pocketfolio.repository.StatementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,8 @@ import java.util.UUID;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
+    private final StatementRepository statementRepository;
 
     @Transactional
     public Account createAccount(Account account) {
@@ -121,7 +125,15 @@ public class AccountService {
         if (!accountRepository.existsById(id)) {
             throw new IllegalArgumentException("Account not found with id: " + id);
         }
-        // TODO: Add logic to handle transactions associated with this account before deletion
+        // Guard: prevent deletion when related transactions/statements exist
+        long refs = 0L
+                + transactionRepository.countByAccount_Id(id)
+                + transactionRepository.countBySourceAccount_Id(id)
+                + transactionRepository.countByTargetAccount_Id(id)
+                + statementRepository.countByAccountId(id);
+        if (refs > 0) {
+            throw new IllegalArgumentException("Account has related transactions/statements and cannot be deleted.");
+        }
         accountRepository.deleteById(id);
     }
 

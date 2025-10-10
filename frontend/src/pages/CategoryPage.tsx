@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../lib/api';
 import type { FormEvent } from 'react';
 
-const API_URL = 'http://localhost:8080/api/categories';
+const API_URL = apiUrl('/api/categories');
 
 // Updated interface to support tree structure
 interface Category {

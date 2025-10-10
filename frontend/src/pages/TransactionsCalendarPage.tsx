@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { apiUrl } from '../lib/api';
+import { startOfMonth, endOfMonth, tpeMidnightIso, ymdFromIsoInTpe, ymd } from '../lib/time';
 
-const API_TX = 'http://localhost:8080/api/transactions';
-const API_ACCOUNTS = 'http://localhost:8080/api/accounts';
-const API_CATEGORIES = 'http://localhost:8080/api/categories';
+const API_TX = apiUrl('/api/transactions');
+const API_ACCOUNTS = apiUrl('/api/accounts');
+const API_CATEGORIES = apiUrl('/api/categories');
 
 type Kind = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
@@ -23,12 +25,7 @@ interface TxItem {
 interface Account { id: string; name: string; currencyCode: string; archived: boolean; type: string; currentBalance: number; }
 interface CategoryNode { id: string; name: string; children?: CategoryNode[] }
 
-function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 function addMonths(d: Date, n: number) { return new Date(d.getFullYear(), d.getMonth() + n, 1); }
-function toIsoStart(z: Date) { return new Date(Date.UTC(z.getFullYear(), z.getMonth(), z.getDate(), 0, 0, 0)).toISOString(); }
-function toIsoNextDay(z: Date) { return new Date(Date.UTC(z.getFullYear(), z.getMonth(), z.getDate() + 1, 0, 0, 0)).toISOString(); }
-function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 function flattenCategories(nodes: CategoryNode[]): { id: string; name: string; level: number }[] {
   const out: { id: string; name: string; level: number }[] = [];
@@ -65,8 +62,8 @@ export function TransactionsCalendarPage() {
 
   const monthStart = startOfMonth(cursor);
   const monthEnd = endOfMonth(cursor);
-  const fromISO = toIsoStart(monthStart);
-  const toISO = toIsoNextDay(new Date(monthEnd));
+  const fromISO = tpeMidnightIso(ymd(monthStart));
+  const toISO = tpeMidnightIso(ymd(new Date(monthEnd.getFullYear(), monthEnd.getMonth(), monthEnd.getDate() + 1)));
 
   useEffect(() => {
     const fetchMonth = async () => {
@@ -114,8 +111,7 @@ export function TransactionsCalendarPage() {
   const countsByDay = useMemo(() => {
     const map = new Map<string, number>();
     for (const it of items) {
-      const d = new Date(it.occurredAt);
-      const key = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+      const key = ymdFromIsoInTpe(it.occurredAt);
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
@@ -145,10 +141,7 @@ export function TransactionsCalendarPage() {
 
   const itemsOfSelectedDay = useMemo(() => {
     if (!selectedDate) return [] as TxItem[];
-    return items.filter(it => {
-      const d = new Date(it.occurredAt);
-      return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate())) === selectedDate;
-    });
+    return items.filter(it => ymdFromIsoInTpe(it.occurredAt) === selectedDate);
   }, [items, selectedDate]);
 
   const daysGrid = useMemo(() => {
@@ -174,7 +167,7 @@ export function TransactionsCalendarPage() {
     const amountNum = parseFloat(amount);
     if (!amount || isNaN(amountNum) || amountNum <= 0) { alert('金額需大於 0'); return; }
     const userId = '00000000-0000-0000-0000-000000000001';
-    const occurredAt = new Date(`${selectedDate}T00:00:00`).toISOString();
+    const occurredAt = tpeMidnightIso(selectedDate);
     const findAcc = (id: string) => accounts.find(a => a.id === id);
 
     type BasePayload = { userId: string; kind: Kind; amount: number; occurredAt: string; notes: string | null };
