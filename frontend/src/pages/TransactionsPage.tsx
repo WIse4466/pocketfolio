@@ -254,13 +254,6 @@ export function TransactionsPage() {
                 ))}
               </select>
             </div>
-const API_BUDGET_SUMMARY = (ym: string) => apiUrl(`/api/budgets/summary?month=${ym}`);
-
-function ymOfDate(dateStr: string) {
-  // dateStr: YYYY-MM-DD
-  const [y, m] = dateStr.split('-');
-  return `${y}-${m}`;
-}
           </>
         )}
 
