@@ -1,0 +1,14 @@
+{
+  "name": "ttjb-import",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "CSV importer for 天天記帳資料(收支).csv into Pocketfolio backend",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6"
+  }
+}
+
