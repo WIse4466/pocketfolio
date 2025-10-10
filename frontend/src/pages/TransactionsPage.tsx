@@ -57,6 +57,7 @@ export function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
+  const [budgetInfo, setBudgetInfo] = useState<{ totalLimit: number; totalSpent: number; overspend: boolean } | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -84,6 +85,19 @@ export function TransactionsPage() {
     };
     fetchAll();
   }, []);
+
+  useEffect(() => {
+    const loadBudget = async () => {
+      try {
+        const ym = ymOfDate(date);
+        const res = await fetch(API_BUDGET_SUMMARY(ym));
+        if (!res.ok) return;
+        const data = await res.json();
+        setBudgetInfo({ totalLimit: data.totalLimit ?? 0, totalSpent: data.totalSpent ?? 0, overspend: !!data.overspend });
+      } catch { /* ignore */ }
+    };
+    loadBudget();
+  }, [date]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -185,6 +199,17 @@ export function TransactionsPage() {
 
   return (
     <div>
+      {budgetInfo && (budgetInfo.totalLimit > 0) && (
+        <div style={{
+          padding: '8px',
+          background: budgetInfo.overspend ? '#ffebee' : '#e8f5e9',
+          border: `1px solid ${budgetInfo.overspend ? '#c62828' : '#2e7d32'}`,
+          color: budgetInfo.overspend ? '#c62828' : '#2e7d32',
+          marginBottom: 10
+        }}>
+          本月預算：{budgetInfo.totalLimit.toFixed(2)}，已用：{budgetInfo.totalSpent.toFixed(2)}{budgetInfo.overspend ? '（已超支）' : ''}
+        </div>
+      )}
       <h1>建立交易</h1>
       <form onSubmit={onSubmit}>
         <div>
@@ -229,6 +254,13 @@ export function TransactionsPage() {
                 ))}
               </select>
             </div>
+const API_BUDGET_SUMMARY = (ym: string) => apiUrl(`/api/budgets/summary?month=${ym}`);
+
+function ymOfDate(dateStr: string) {
+  // dateStr: YYYY-MM-DD
+  const [y, m] = dateStr.split('-');
+  return `${y}-${m}`;
+}
           </>
         )}
 

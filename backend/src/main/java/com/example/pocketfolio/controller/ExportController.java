@@ -4,6 +4,7 @@ import com.example.pocketfolio.entity.Account;
 import com.example.pocketfolio.entity.Transaction;
 import com.example.pocketfolio.repository.AccountRepository;
 import com.example.pocketfolio.repository.TransactionRepository;
+import com.example.pocketfolio.repository.StatementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -28,6 +29,7 @@ public class ExportController {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final StatementRepository statementRepository;
 
     @GetMapping(value = "/csv", produces = "application/zip")
     public ResponseEntity<byte[]> exportCsvZip(@RequestParam(name = "v", defaultValue = "1") String version) throws Exception {
@@ -35,6 +37,7 @@ public class ExportController {
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
             writeAccountsCsv(zos);
             writeTransactionsCsv(zos);
+            writeStatementsCsv(zos);
             // ZipOutputStream will be closed by try-with-resources here
         }
         String filename = "export_" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmm").format(java.time.LocalDateTime.now()) + "_v" + version + ".zip";
@@ -95,6 +98,32 @@ public class ExportController {
             w2.write("\n");
         }
         w2.flush(); // keep zip open
+        zos.closeEntry();
+    }
+
+    private void writeStatementsCsv(ZipOutputStream zos) throws Exception {
+        zos.putNextEntry(new ZipEntry("statements.csv"));
+        OutputStreamWriter w = new OutputStreamWriter(zos, StandardCharsets.UTF_8);
+        w.write("id,account_id,period_start,period_end,closing_date,due_date,balance,status,planned_tx_id,paid_tx_id,created_at\n");
+        var stmts = statementRepository.findAll();
+        for (var s : stmts) {
+            String line = String.join(",",
+                    q(s.getId()),
+                    q(s.getAccount() != null ? s.getAccount().getId() : null),
+                    q(s.getPeriodStart()),
+                    q(s.getPeriodEnd()),
+                    q(s.getClosingDate()),
+                    q(s.getDueDate()),
+                    q(dec(s.getBalance())),
+                    q(s.getStatus() != null ? s.getStatus().name() : null),
+                    q(s.getPlannedTx() != null ? s.getPlannedTx().getId() : null),
+                    q(s.getPaidTx() != null ? s.getPaidTx().getId() : null),
+                    q(instant(s.getCreatedAt()))
+            );
+            w.write(line);
+            w.write("\n");
+        }
+        w.flush();
         zos.closeEntry();
     }
 
