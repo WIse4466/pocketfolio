@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { API_BASE } from '../lib/api';
 
+type ImportErrorItem = { row: number; message: string };
+type ImportResult = {
+  imported: number;
+  skipped: number;
+  createdAccounts: number;
+  createdCategories: number;
+  errors: ImportErrorItem[];
+};
+
 export function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [createAccounts, setCreateAccounts] = useState(true);
   const [createCategories, setCreateCategories] = useState(true);
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<any | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -27,7 +36,7 @@ export function ImportPage() {
         try { const j = JSON.parse(text); setError(j.message || text); } catch { setError(text); }
         return;
       }
-      try { setResult(JSON.parse(text)); } catch { setResult({ ok: true }); }
+      try { setResult(JSON.parse(text) as ImportResult); } catch { setResult(null); }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -72,7 +81,7 @@ export function ImportPage() {
             <div style={{ marginTop: 8 }}>
               <div>Errors（前 20 筆）：</div>
               <ul>
-                {result.errors.slice(0, 20).map((e: any, idx: number) => (
+                {result.errors.slice(0, 20).map((e, idx) => (
                   <li key={idx}>Row {e.row}: {e.message}</li>
                 ))}
               </ul>
@@ -83,4 +92,3 @@ export function ImportPage() {
     </div>
   );
 }
-
