@@ -122,7 +122,18 @@ VITE_API_BASE_URL=http://localhost:8080
 
 Docker Compose 啟動時已在 `frontend` 服務注入相同環境變數，無需額外設定。
 
-## 12.2 MVP：Transactions API（建立/查詢/刪除）
+## 12.2 預算與匯率（新增）
+
+- 概覽頁（`#/overview`）：設定今日匯率（TWD 基準）、查看各帳戶 TWD 等值與淨值。
+- 交易頁：顯示本月預算橫幅（已用/總額/超支），並可設定本月總額與分類預算。
+- 排程頁（`#/recurrences`）：新增每月固定週期交易（INCOME/EXPENSE），含假日策略，並可手動「立即執行今天」。
+
+API 文件：
+- Budgets：docs/api/budgets.md
+- FX（匯率/淨值）：docs/api/fx.md
+- Recurrences（固定週期）：docs/api/recurrences.md
+
+## 12.3 MVP：Transactions API（建立/查詢/刪除）
 
 本階段提供「建立／查詢（區間）／刪除」交易的 API（MVP 僅單幣別）。完整說明見 docs/api/transactions.md。
 

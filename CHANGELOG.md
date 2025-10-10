@@ -10,6 +10,11 @@ This format follows Keep a Changelog and adheres to Semantic Versioning where pr
 - 前端：帳戶管理頁送出並讀取上述欄位（信用卡時）。
 - Docs：`docs/api/accounts.md`、README 連結。
  - DB/Flyway V5：新增 `statements` 表；結帳與自動扣款 MVP（手動結帳端點、每日 00:20 自動扣款）。
+ - 匯出：ZIP 內新增 `statements.csv`。
+ - 預算：DB V8（`budgets`/`category_budgets`），API（summary/upsert），交易頁預算橫幅與設定表單。
+ - 匯率：DB V9（`fx_rates`），API（`/api/fx/rates`、`/api/fx/net-worth`），前端「概覽」頁（設定匯率、TWD 淨值/等值）。
+ - 固定週期（每月）：DB V10（`recurrences`），Scheduler（每日 00:05），API（建立/列表/啟停/今日執行），前端「排程」頁（表格/文字）。
+ - 匯入：前端「匯入」頁（上傳 CSV），後端匯入器強化（欄位自動偵測、父/子分類建立、負數金額正規化、TPE 00:00）。
 
 ## 0.1.1 — 2025-10-01
 ### Added
@@ -18,6 +23,7 @@ This format follows Keep a Changelog and adheres to Semantic Versioning where pr
 ### Changed
 - DB/Flyway：重整為新基準（V1：users/categories/accounts；V2：預設使用者），移除舊有相互衝突的遷移。注意：本地需以 `docker compose down -v` 重置資料卷後重啟。
 - CI：`backend-docker-build` 保留僅建置，不推送影像；整體工作拆分更清晰。
+ - 匯出 ZIP：修正 Stream closed 問題，避免 Writer 提前關閉 ZipOutputStream。
 
 ### Fixed
 - Frontend：修正 TypeScript `verbatimModuleSyntax` 與 `erasableSyntaxOnly` 導致的匯入/enum 問題；移除 `any` 用法以通過 ESLint。
