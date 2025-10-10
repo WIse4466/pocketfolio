@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { StatementsPage } from './pages/StatementsPage';
 import { ImportPage } from './pages/ImportPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { RecurrencesPage } from './pages/RecurrencesPage';
 import { API_BASE } from './lib/api';
 
 function App() {
@@ -33,6 +34,9 @@ function App() {
     case '#/overview':
       PageComponent = OverviewPage;
       break;
+    case '#/recurrences':
+      PageComponent = RecurrencesPage;
+      break;
     case '#/calendar':
       PageComponent = TransactionsCalendarPage;
       break;
@@ -57,6 +61,7 @@ function App() {
         <a href="#/calendar">月曆</a> |
         <a href="#/statements">帳單</a> |
         <a href="#/overview">概覽</a> |
+        <a href="#/recurrences">排程</a> |
         <a href="#/import">匯入</a> |
         <a href={`${API_BASE}/api/exports/csv?v=1`} target="_blank" rel="noreferrer">下載 CSV</a>
       </nav>
