@@ -6,6 +6,13 @@ import type { FormEvent } from 'react';
 const API_TX = apiUrl('/api/transactions');
 const API_ACCOUNTS = apiUrl('/api/accounts');
 const API_CATEGORIES = apiUrl('/api/categories');
+const API_BUDGET_SUMMARY = (ym: string) => apiUrl(`/api/budgets/summary?month=${ym}`);
+
+function ymOfDate(dateStr: string) {
+  // dateStr: YYYY-MM-DD
+  const [y, m] = dateStr.split('-');
+  return `${y}-${m}`;
+}
 
 type Kind = 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
