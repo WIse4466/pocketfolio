@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: pocketfolio-db
+    environment:
+      POSTGRES_USER: admin          # 資料庫帳號
+      POSTGRES_PASSWORD: password   # 資料庫密碼
+      POSTGRES_DB: pocketfolio      # 資料庫名稱
+    ports:
+      - "5432:5432"                 # 容器 port : 電腦 port
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # volumes名稱：容器內PostgreSQL存放資料的路徑
+
+volumes:
+  postgres_data:
