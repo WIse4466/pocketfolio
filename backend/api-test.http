@@ -1,0 +1,445 @@
+###############################################################################
+# PocketFolio API 測試檔案
+# 使用方式：
+# 1. 在 VS Code 安裝 REST Client 擴充套件
+# 2. 點擊每個請求上方的 "Send Request" 執行
+# 3. 結果會顯示在右側視窗
+###############################################################################
+
+### 環境變數設定
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+# 將實際取得的 ID 貼在這裡，方便後續測試使用
+@categoryId = 6099d922-b5a4-4da3-84f0-ed913d642024
+@transactionId = 3747d5d0-0473-43a3-8fbf-2cda7d4738fd
+
+
+###############################################################################
+# CATEGORY API
+###############################################################################
+
+### ========== Create ==========
+
+### 1-1. 建立收入類別 - 薪資
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "薪資",
+  "type": "INCOME",
+  "description": "每月固定薪水"
+}
+
+### 1-2. 建立收入類別 - 投資收益
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "投資收益",
+  "type": "INCOME",
+  "description": "股票、基金等投資獲利"
+}
+
+### 1-3. 建立收入類別 - 獎金
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "獎金",
+  "type": "INCOME"
+}
+
+### 1-4. 建立支出類別 - 食物
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "食物",
+  "type": "EXPENSE",
+  "description": "三餐、零食、飲料"
+}
+
+### 1-5. 建立支出類別 - 交通
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "交通",
+  "type": "EXPENSE",
+  "description": "捷運、公車、計程車、加油"
+}
+
+### 1-6. 建立支出類別 - 娛樂
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "娛樂",
+  "type": "EXPENSE",
+  "description": "電影、遊戲、旅遊"
+}
+
+### 1-7. 建立支出類別 - 投資
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "投資",
+  "type": "EXPENSE",
+  "description": "購買股票、基金等"
+}
+
+### 1-8. 建立支出類別 - 房租
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "房租",
+  "type": "EXPENSE"
+}
+
+### ========== Read ==========
+
+### 2-1. 查詢所有類別
+GET {{baseUrl}}/api/categories
+
+### 2-2. 只查詢收入類別
+GET {{baseUrl}}/api/categories?type=INCOME
+
+### 2-3. 只查詢支出類別
+GET {{baseUrl}}/api/categories?type=EXPENSE
+
+### 2-4. 查詢單筆類別（記得先執行上面的 Create，複製回應的 id 貼到變數）
+GET {{baseUrl}}/api/categories/{{categoryId}}
+
+### ========== Update ==========
+
+### 3-1. 更新類別 - 修改名稱和描述
+PUT {{baseUrl}}/api/categories/{{categoryId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "伙食費",
+  "type": "EXPENSE",
+  "description": "更新過的描述：包含早午晚餐"
+}
+
+### 3-2. 更新類別 - 只改描述
+PUT {{baseUrl}}/api/categories/{{categoryId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "食物",
+  "type": "EXPENSE",
+  "description": "只更新描述欄位"
+}
+
+### ========== Delete ==========
+
+### 4-1. 刪除類別（會回傳 204 No Content）
+DELETE {{baseUrl}}/api/categories/{{categoryId}}
+
+### ========== 錯誤測試 ==========
+
+### 5-1. 測試驗證錯誤 - 名稱為空
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "",
+  "type": "INCOME"
+}
+# 預期：400 Bad Request，訊息包含 "類別名稱不能為空"
+
+### 5-2. 測試驗證錯誤 - 類型為空
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "測試類別"
+}
+# 預期：400 Bad Request，訊息包含 "類別類型不能為空"
+
+### 5-3. 測試重複名稱（需先建立一次薪資類別，再執行這個）
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "薪資",
+  "type": "INCOME"
+}
+# 預期：400 Bad Request，訊息包含 "類別名稱「薪資」已存在"
+
+### 5-4. 測試查詢不存在的 ID
+GET {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+### 5-5. 測試更新不存在的 ID
+PUT {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
+Content-Type: {{contentType}}
+
+{
+  "name": "測試",
+  "type": "INCOME"
+}
+# 預期：404 Not Found
+
+### 5-6. 測試刪除不存在的 ID
+DELETE {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+
+###############################################################################
+# TRANSACTION API
+###############################################################################
+
+### ========== Create ==========
+
+### 6-1. 建立交易 - 完整資料
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 45000,
+  "note": "二月薪水",
+  "date": "2026-02-25"
+}
+
+### 6-2. 建立交易 - 只有金額和日期
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 80,
+  "date": "2026-02-23"
+}
+
+### 6-3. 建立交易 - 沒有日期（會自動使用今天）
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 150,
+  "note": "午餐"
+}
+
+### 6-4. 建立多筆測試資料 - 早餐
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 60,
+  "note": "早餐 - 三明治",
+  "date": "2026-02-23"
+}
+
+### 6-5. 建立多筆測試資料 - 晚餐
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 200,
+  "note": "晚餐 - 火鍋",
+  "date": "2026-02-22"
+}
+
+### 6-6. 建立多筆測試資料 - 交通
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 50,
+  "note": "捷運儲值",
+  "date": "2026-02-21"
+}
+
+### 6-7. 建立多筆測試資料 - 娛樂
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 350,
+  "note": "電影票",
+  "date": "2026-02-20"
+}
+
+### ========== Read ==========
+
+### 7-1. 查詢交易列表 - 預設排序（日期降序）
+GET {{baseUrl}}/api/transactions
+
+### 7-2. 查詢交易列表 - 分頁（第 1 頁，每頁 5 筆）
+GET {{baseUrl}}/api/transactions?page=0&size=5
+
+### 7-3. 查詢交易列表 - 分頁（第 2 頁）
+GET {{baseUrl}}/api/transactions?page=1&size=5
+
+### 7-4. 查詢交易列表 - 依日期升序排列
+GET {{baseUrl}}/api/transactions?sort=date,asc
+
+### 7-5. 查詢交易列表 - 依金額降序排列
+GET {{baseUrl}}/api/transactions?sort=amount,desc
+
+### 7-6. 查詢交易列表 - 每頁 3 筆，依金額升序
+GET {{baseUrl}}/api/transactions?page=0&size=3&sort=amount,asc
+
+### 7-7. 查詢單筆交易（記得先執行 Create，複製 id 貼到變數）
+GET {{baseUrl}}/api/transactions/{{transactionId}}
+
+### ========== Update ==========
+
+### 8-1. 更新交易 - 修改所有欄位
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 1500,
+  "note": "更新後的交易：修正金額",
+  "date": "2026-02-24"
+}
+
+### 8-2. 更新交易 - 只改金額
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 999,
+  "note": "只改金額",
+  "date": "2026-02-23"
+}
+
+### 8-3. 更新交易 - 移除備註（設為 null）
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "note": null,
+  "date": "2026-02-23"
+}
+
+### ========== Delete ==========
+
+### 9-1. 刪除交易（會回傳 204 No Content）
+DELETE {{baseUrl}}/api/transactions/{{transactionId}}
+
+### ========== 錯誤測試 ==========
+
+### 10-1. 測試驗證錯誤 - 金額為負數
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": -100,
+  "note": "負數測試",
+  "date": "2026-02-23"
+}
+# 預期：400 Bad Request，訊息包含 "金額必須大於 0"
+
+### 10-2. 測試驗證錯誤 - 金額為 0
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 0,
+  "note": "零元測試",
+  "date": "2026-02-23"
+}
+# 預期：400 Bad Request
+
+### 10-3. 測試驗證錯誤 - 金額為 null
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "note": "沒有金額",
+  "date": "2026-02-23"
+}
+# 預期：400 Bad Request，訊息包含 "金額不能為空"
+
+### 10-4. 測試查詢不存在的 ID
+GET {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found，訊息包含 "找不到 ID"
+
+### 10-5. 測試更新不存在的 ID
+PUT {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "date": "2026-02-23"
+}
+# 預期：404 Not Found
+
+### 10-6. 測試刪除不存在的 ID
+DELETE {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+
+###############################################################################
+# 整合測試情境
+###############################################################################
+
+### ========== 情境一：建立完整的收支記錄 ==========
+
+### S1-1. 先建立收入類別
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "兼職收入",
+  "type": "INCOME"
+}
+# 複製回應的 id，用於下一步
+
+### S1-2. 再建立對應的交易（未來 Phase 2 會綁定 categoryId）
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 5000,
+  "note": "週末家教",
+  "date": "2026-02-23"
+}
+
+### ========== 情境二：月底檢查所有交易 ==========
+
+### S2-1. 查詢所有交易（檢查這個月花了多少）
+GET {{baseUrl}}/api/transactions?page=0&size=50&sort=date,desc
+
+### S2-2. 查詢所有支出類別（看看支出都花在哪些項目）
+GET {{baseUrl}}/api/categories?type=EXPENSE
+
+### ========== 情境三：修正錯誤的記帳 ==========
+
+### S3-1. 查詢特定交易
+GET {{baseUrl}}/api/transactions/{{transactionId}}
+
+### S3-2. 發現金額錯誤，更新
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 120,
+  "note": "修正金額：原本記錯了",
+  "date": "2026-02-23"
+}
+
+### S3-3. 確認更新成功
+GET {{baseUrl}}/api/transactions/{{transactionId}}
+
+
+###############################################################################
+# 壓力測試（選用）
+###############################################################################
+
+### 批次建立 10 筆交易（手動執行 10 次）
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "note": "批次測試資料",
+  "date": "2026-02-20"
+}

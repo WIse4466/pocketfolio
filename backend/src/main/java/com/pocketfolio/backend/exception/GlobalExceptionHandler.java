@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
                 .body(errorBody("伺服器發生錯誤，請稍後再試"));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(errorBody(ex.getMessage()));
+    }
+
     private Map<String, Object> errorBody(String message) {
         return Map.of(
                 "timestamp", LocalDateTime.now().toString(),
