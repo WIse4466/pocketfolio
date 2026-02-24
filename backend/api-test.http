@@ -443,3 +443,375 @@ Content-Type: {{contentType}}
   "note": "批次測試資料",
   "date": "2026-02-20"
 }
+
+###############################################################################
+# ACCOUNT API
+###############################################################################
+
+### ========== Create ==========
+
+### A1-1. 建立現金帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "錢包現金",
+  "type": "CASH",
+  "initialBalance": 5000,
+  "description": "隨身錢包"
+}
+
+### A1-2. 建立銀行帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "台新銀行",
+  "type": "BANK",
+  "initialBalance": 50000,
+  "description": "薪轉戶"
+}
+
+### A1-3. 建立信用卡帳戶（負值表示欠款）
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "花旗信用卡",
+  "type": "CREDIT_CARD",
+  "initialBalance": -15000,
+  "description": "本期帳單"
+}
+
+### A1-4. 建立投資帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "富邦證券",
+  "type": "INVESTMENT",
+  "initialBalance": 100000,
+  "description": "股票投資帳戶"
+}
+
+### ========== Read ==========
+
+### A2-1. 查詢所有帳戶
+GET {{baseUrl}}/api/accounts
+
+### A2-2. 只查詢銀行帳戶
+GET {{baseUrl}}/api/accounts?type=BANK
+
+### A2-3. 只查詢投資帳戶
+GET {{baseUrl}}/api/accounts?type=INVESTMENT
+
+### A2-4. 搜尋帳戶（包含「銀行」關鍵字）
+GET {{baseUrl}}/api/accounts?search=銀行
+
+### A2-5. 查詢單筆帳戶
+@accountId = 57319826-5771-4bc8-9a59-284456bdc45f
+GET {{baseUrl}}/api/accounts/{{accountId}}
+
+### ========== Update ==========
+
+### A3-1. 更新帳戶資訊
+PUT {{baseUrl}}/api/accounts/{{accountId}}
+Content-Type: {{contentType}}
+
+{
+  "name": "台新 Richart",
+  "type": "BANK",
+  "initialBalance": 50000,
+  "description": "數位帳戶"
+}
+
+### ========== Delete ==========
+
+### A4-1. 刪除帳戶
+DELETE {{baseUrl}}/api/accounts/{{accountId}}
+
+### ========== 錯誤測試 ==========
+
+### A5-1. 測試重複名稱
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "台新銀行",
+  "type": "BANK",
+  "initialBalance": 1000
+}
+
+###############################################################################
+# ASSET API (資產持倉)
+###############################################################################
+
+### 變數：先建立帳戶，複製 ID 到這裡
+@investmentAccountId = 95348507-0c19-4010-a75a-fab01c81854a
+@assetId = ce4da864-9a20-4fbd-8e89-70eb79df884b
+
+### ========== Create Assets ==========
+
+### AS1-1. 建立股票資產 - 台積電
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "2330.TW",
+  "name": "台積電",
+  "quantity": 100,
+  "costPrice": 600,
+  "note": "長期持有"
+}
+
+### AS1-2. 建立股票資產 - 台達電
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "2308.TW",
+  "name": "台達電",
+  "quantity": 50,
+  "costPrice": 350
+}
+
+### AS1-3. 建立加密貨幣 - 比特幣
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "CRYPTO",
+  "symbol": "BTC",
+  "name": "比特幣",
+  "quantity": 0.5,
+  "costPrice": 1200000,
+  "note": "長期投資，定期定額"
+}
+
+### AS1-4. 建立加密貨幣 - 以太幣
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "CRYPTO",
+  "symbol": "ETH",
+  "name": "以太幣",
+  "quantity": 2,
+  "costPrice": 80000
+}
+
+### AS1-5. 建立基金資產
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "FUND",
+  "symbol": "0050.TW",
+  "name": "元大台灣50",
+  "quantity": 20,
+  "costPrice": 150
+}
+
+### ========== Read Assets ==========
+
+### AS2-1. 查詢單筆資產
+GET {{baseUrl}}/api/assets/{{assetId}}
+
+### AS2-2. 查詢某帳戶的所有資產
+GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}
+
+### AS2-3. 查詢某帳戶的股票資產
+GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=STOCK
+
+### AS2-4. 查詢某帳戶的加密貨幣資產
+GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=CRYPTO
+
+### AS2-5. 查詢某帳戶的基金資產
+GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=FUND
+
+### ========== Update Assets ==========
+
+### AS3-1. 更新資產 - 調整持有數量（加碼）
+PUT {{baseUrl}}/api/assets/{{assetId}}
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "2330.TW",
+  "name": "台積電",
+  "quantity": 150,
+  "costPrice": 620,
+  "note": "加碼買入，平均成本提高"
+}
+
+### AS3-2. 更新資產 - 部分賣出
+PUT {{baseUrl}}/api/assets/{{assetId}}
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "CRYPTO",
+  "symbol": "BTC",
+  "name": "比特幣",
+  "quantity": 0.3,
+  "costPrice": 1200000,
+  "note": "部分獲利了結"
+}
+
+### ========== Delete Assets ==========
+
+### AS4-1. 刪除資產（全部賣出清倉）
+DELETE {{baseUrl}}/api/assets/{{assetId}}
+
+### ========== Error Tests ==========
+
+### AS5-1. 測試建立資產 - 帳戶不存在
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "00000000-0000-0000-0000-000000000000",
+  "type": "STOCK",
+  "symbol": "TEST",
+  "name": "測試",
+  "quantity": 1,
+  "costPrice": 100
+}
+# 預期：404 Not Found
+
+### AS5-2. 測試建立資產 - 數量為負數
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "TEST",
+  "name": "測試",
+  "quantity": -10,
+  "costPrice": 100
+}
+# 預期：400 Bad Request，數量必須大於 0
+
+### AS5-3. 測試建立資產 - 成本價為 0
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "TEST",
+  "name": "測試",
+  "quantity": 10,
+  "costPrice": 0
+}
+# 預期：400 Bad Request，成本價必須大於 0
+
+### AS5-4. 測試建立資產 - 重複的代號
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "2330.TW",
+  "name": "台積電",
+  "quantity": 10,
+  "costPrice": 600
+}
+# 預期：400 Bad Request，已有相同代號的資產
+
+### AS5-5. 測試查詢不存在的資產
+GET {{baseUrl}}/api/assets/00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+
+###############################################################################
+# 整合測試情境 - 投資帳戶完整流程
+###############################################################################
+
+### ========== 情境：建立投資帳戶並新增持倉 ==========
+
+### IS1-1. 先建立投資帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "富邦證券",
+  "type": "INVESTMENT",
+  "initialBalance": 0,
+  "description": "股票投資專用帳戶"
+}
+# 複製回應的 id，更新上方的 @investmentAccountId
+
+### IS1-2. 新增第一筆資產 - 台積電
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "STOCK",
+  "symbol": "2330.TW",
+  "name": "台積電",
+  "quantity": 100,
+  "costPrice": 600
+}
+
+### IS1-3. 新增第二筆資產 - 比特幣
+POST {{baseUrl}}/api/assets
+Content-Type: {{contentType}}
+
+{
+  "accountId": "{{investmentAccountId}}",
+  "type": "CRYPTO",
+  "symbol": "BTC",
+  "name": "比特幣",
+  "quantity": 0.5,
+  "costPrice": 1200000
+}
+
+### IS1-4. 查看帳戶資訊（應該顯示總市值）
+GET {{baseUrl}}/api/accounts/{{investmentAccountId}}
+# currentBalance 應該等於所有資產的市值加總
+
+### IS1-5. 查看帳戶的所有資產
+GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}
+# 應該顯示：台積電 100股、比特幣 0.5個
+# 每筆都有 marketValue（市值）、profitLoss（損益）等計算欄位
+
+### ========== 情境：模擬價格變動（Phase 4 會自動化）==========
+
+### IS2-1. 手動更新台積電當前價格（模擬漲價）
+# Phase 4 會改用 API 自動更新，現在先手動測試
+# 注意：目前 API 沒有提供單獨更新 currentPrice 的端點
+# Phase 4 會加入 PATCH /api/assets/{id}/price 端點
+
+### IS2-2. 查看資產損益變化
+GET {{baseUrl}}/api/assets/{{assetId}}
+# 查看 profitLoss 和 profitLossPercent 欄位
+
+
+###############################################################################
+# 測試情境建議執行順序
+###############################################################################
+
+# 1. 建立基礎資料（依序執行）：
+#    - 1-1 到 1-8: 建立 Category
+#    - A1-1 到 A1-4: 建立 Account（記得複製投資帳戶的 ID）
+#    - AS1-1 到 AS1-5: 建立 Asset
+
+# 2. 查詢測試（驗證資料正確）：
+#    - 2-1 到 2-4: Category 查詢
+#    - A2-1 到A2-5: Account 查詢
+#    - AS2-1 到 AS2-5: Asset 查詢
+
+# 3. 整合情境測試：
+#    - IS1-1 到 IS1-5: 完整投資帳戶流程
