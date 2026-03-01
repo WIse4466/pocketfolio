@@ -1,5 +1,8 @@
 package com.pocketfolio.backend.dto;
 
+import com.pocketfolio.backend.entity.Account;
+import com.pocketfolio.backend.entity.AccountType;
+import com.pocketfolio.backend.entity.CategoryType;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -13,4 +16,12 @@ public class TransactionResponse {
     private BigDecimal amount;
     private String note;
     private LocalDate date;
+
+    private UUID categoryId;
+    private String categoryName;
+    private CategoryType categoryType;
+
+    private UUID accountId;
+    private String accountName;
+    private AccountType accountType;
 }

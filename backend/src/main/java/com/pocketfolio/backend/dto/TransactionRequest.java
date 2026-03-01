@@ -5,11 +5,18 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data
 public class TransactionRequest {
     @NotNull(message = "金額不能為空")
     private BigDecimal amount;
+
     private String note;
+
     private LocalDate date;
+
+    private UUID categoryId;
+
+    private UUID accountId;
 }

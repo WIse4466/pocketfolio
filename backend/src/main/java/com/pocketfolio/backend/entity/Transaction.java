@@ -23,4 +23,13 @@ public class Transaction {
 
     @Column(nullable = false)
     private LocalDate date;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @ManyToOne
+    @JoinColumn(name = "account_id")
+    private Account account;
+
 }

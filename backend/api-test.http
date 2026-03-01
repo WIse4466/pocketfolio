@@ -12,7 +12,7 @@
 
 # 將實際取得的 ID 貼在這裡，方便後續測試使用
 @categoryId = 6099d922-b5a4-4da3-84f0-ed913d642024
-@transactionId = 3747d5d0-0473-43a3-8fbf-2cda7d4738fd
+@transactionId = d9ca2fe9-e868-4bb2-b695-9313717726c4
 
 
 ###############################################################################
@@ -191,190 +191,416 @@ DELETE {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
 
 
 ###############################################################################
-# TRANSACTION API
+# TRANSACTION API (擴充版 - 包含類別與帳戶關聯)
 ###############################################################################
 
-### ========== Create ==========
+### 變數：先建立類別和帳戶，複製 ID 到這裡
+@salaryCategory = 79adf2ee-c43f-4bab-9e92-ec9ccb6ba6d3
+@foodCategory = 3804d718-9e37-4c3c-82a0-8b874e969a92
+@transportCategory = 5bbf89fc-0db9-42f3-98af-e147ee07843c
+@cashAccount = b9d771fa-413f-44b9-b0aa-d09b7478aaf2
+@bankAccount = dcb09728-c42e-4042-9bfd-46c12f3d48d1
 
-### 6-1. 建立交易 - 完整資料
+### ========== Create Transactions (含關聯) ==========
+
+### T1-1. 建立收入交易 - 薪資入帳到銀行
 POST {{baseUrl}}/api/transactions
 Content-Type: {{contentType}}
 
 {
   "amount": 45000,
   "note": "二月薪水",
-  "date": "2026-02-25"
+  "date": "2026-02-25",
+  "categoryId": "{{salaryCategory}}",
+  "accountId": "{{bankAccount}}"
 }
 
-### 6-2. 建立交易 - 只有金額和日期
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 80,
-  "date": "2026-02-23"
-}
-
-### 6-3. 建立交易 - 沒有日期（會自動使用今天）
+### T1-2. 建立支出交易 - 食物（從現金支付）
 POST {{baseUrl}}/api/transactions
 Content-Type: {{contentType}}
 
 {
   "amount": 150,
-  "note": "午餐"
+  "note": "午餐便當",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
 }
 
-### 6-4. 建立多筆測試資料 - 早餐
+### T1-3. 建立支出交易 - 交通（從銀行扣款）
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 500,
+  "note": "捷運月票",
+  "date": "2026-02-01",
+  "categoryId": "{{transportCategory}}",
+  "accountId": "{{bankAccount}}"
+}
+
+### T1-4. 建立交易 - 只有類別，沒有帳戶
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 80,
+  "note": "早餐",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}"
+}
+
+### T1-5. 建立交易 - 只有帳戶，沒有類別（未分類）
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 200,
+  "note": "未分類支出",
+  "date": "2026-02-22",
+  "accountId": "{{cashAccount}}"
+}
+
+### T1-6. 建立交易 - 沒有類別也沒有帳戶
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 50,
+  "note": "臨時支出",
+  "date": "2026-02-21"
+}
+
+### T1-7. 批次建立測試資料 - 食物支出
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 120,
+  "note": "晚餐",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
+}
+
+### T1-8. 批次建立測試資料 - 早餐
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 60,
+  "note": "早餐",
+  "date": "2026-02-24",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
+}
+
+### T1-9. 批次建立測試資料 - 交通
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 50,
+  "note": "計程車",
+  "date": "2026-02-20",
+  "categoryId": "{{transportCategory}}",
+  "accountId": "{{cashAccount}}"
+}
+
+### ========== Read Transactions (基本查詢) ==========
+
+### T2-1. 查詢所有交易（預設分頁）
+GET {{baseUrl}}/api/transactions
+
+### T2-2. 查詢單筆交易（應顯示類別和帳戶資訊）
+GET {{baseUrl}}/api/transactions/{{transactionId}}
+# 回應應包含：categoryName, categoryType, accountName, accountType
+
+### T2-3. 分頁查詢 - 第1頁，每頁5筆
+GET {{baseUrl}}/api/transactions?page=0&size=5
+
+### T2-4. 依日期升序排列
+GET {{baseUrl}}/api/transactions?sort=date,asc
+
+### T2-5. 依金額降序排列
+GET {{baseUrl}}/api/transactions?sort=amount,desc
+
+### ========== Read Transactions (依類別篩選) ==========
+
+### T3-1. 查詢「食物」類別的所有交易
+GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}
+
+### T3-2. 查詢「交通」類別的所有交易
+GET {{baseUrl}}/api/transactions?categoryId={{transportCategory}}
+
+### T3-3. 查詢「薪資」類別的所有交易
+GET {{baseUrl}}/api/transactions?categoryId={{salaryCategory}}
+
+### ========== Read Transactions (依帳戶篩選) ==========
+
+### T4-1. 查詢「現金」帳戶的所有交易
+GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}
+
+### T4-2. 查詢「銀行」帳戶的所有交易
+GET {{baseUrl}}/api/transactions?accountId={{bankAccount}}
+
+### ========== Read Transactions (依日期範圍篩選) ==========
+
+### T5-1. 查詢二月份的所有交易
+GET {{baseUrl}}/api/transactions?startDate=2026-02-01&endDate=2026-02-28
+
+### T5-2. 查詢最近7天的交易
+GET {{baseUrl}}/api/transactions?startDate=2026-02-16&endDate=2026-02-23
+
+### T5-3. 查詢本週的交易
+GET {{baseUrl}}/api/transactions?startDate=2026-02-17&endDate=2026-02-23
+
+### ========== Read Transactions (組合篩選) ==========
+
+### T6-1. 查詢「食物」類別 + 二月份
+GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-01&endDate=2026-02-28
+
+### T6-2. 查詢「現金」帳戶 + 二月份
+GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}&startDate=2026-02-01&endDate=2026-02-28
+
+### T6-3. 查詢「交通」類別 + 「銀行」帳戶 + 二月份（複雜組合）
+# 注意：目前 API 不支援同時篩選類別和帳戶，這是進階功能
+# 可以先篩選類別，或先篩選帳戶
+GET {{baseUrl}}/api/transactions?categoryId={{transportCategory}}&startDate=2026-02-01&endDate=2026-02-28
+
+### ========== Update Transactions ==========
+
+### T7-1. 更新交易 - 修改金額和類別
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 180,
+  "note": "午餐便當（修正金額）",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
+}
+
+### T7-2. 更新交易 - 改變帳戶
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 150,
+  "note": "改用銀行支付",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{bankAccount}}"
+}
+
+### T7-3. 更新交易 - 清除類別（設為 null）
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "note": "移除類別",
+  "date": "2026-02-23",
+  "accountId": "{{cashAccount}}"
+}
+
+### T7-4. 更新交易 - 清除帳戶
+PUT {{baseUrl}}/api/transactions/{{transactionId}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "note": "移除帳戶",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}"
+}
+
+### ========== Delete Transactions ==========
+
+### T8-1. 刪除交易
+DELETE {{baseUrl}}/api/transactions/{{transactionId}}
+
+### ========== Error Tests ==========
+
+### T9-1. 建立交易 - 類別 ID 不存在
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "date": "2026-02-23",
+  "categoryId": "00000000-0000-0000-0000-000000000000"
+}
+# 預期：404 Not Found，找不到類別
+
+### T9-2. 建立交易 - 帳戶 ID 不存在
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "date": "2026-02-23",
+  "accountId": "00000000-0000-0000-0000-000000000000"
+}
+# 預期：404 Not Found，找不到帳戶
+
+### T9-3. 查詢交易 - 類別 ID 不存在
+GET {{baseUrl}}/api/transactions?categoryId=00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+### T9-4. 查詢交易 - 帳戶 ID 不存在
+GET {{baseUrl}}/api/transactions?accountId=00000000-0000-0000-0000-000000000000
+# 預期：404 Not Found
+
+
+###############################################################################
+# 整合測試情境 - 完整記帳流程
+###############################################################################
+
+### ========== 情境：發薪日完整記帳 ==========
+
+### IT1-1. 先建立收入類別「薪資」
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "薪資",
+  "type": "INCOME",
+  "description": "每月固定薪水"
+}
+# 複製回應的 id → @salaryCategory
+
+### IT1-2. 建立銀行帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "台新銀行",
+  "type": "BANK",
+  "initialBalance": 10000,
+  "description": "薪轉戶"
+}
+# 複製回應的 id → @bankAccount
+
+### IT1-3. 記錄薪資入帳
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 45000,
+  "note": "二月薪水",
+  "date": "2026-02-25",
+  "categoryId": "{{salaryCategory}}",
+  "accountId": "{{bankAccount}}"
+}
+
+### IT1-4. 查看銀行帳戶（餘額應該是 initialBalance + 交易）
+GET {{baseUrl}}/api/accounts/{{bankAccount}}
+# currentBalance 應該顯示正確餘額（Phase 2 最後會實作）
+
+### ========== 情境：日常消費記帳 ==========
+
+### IT2-1. 建立支出類別「食物」
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "name": "食物",
+  "type": "EXPENSE"
+}
+# 複製 id → @foodCategory
+
+### IT2-2. 建立現金帳戶
+POST {{baseUrl}}/api/accounts
+Content-Type: {{contentType}}
+
+{
+  "name": "錢包現金",
+  "type": "CASH",
+  "initialBalance": 2000
+}
+# 複製 id → @cashAccount
+
+### IT2-3. 記錄早餐消費
 POST {{baseUrl}}/api/transactions
 Content-Type: {{contentType}}
 
 {
   "amount": 60,
   "note": "早餐 - 三明治",
-  "date": "2026-02-23"
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
 }
 
-### 6-5. 建立多筆測試資料 - 晚餐
+### IT2-4. 記錄午餐消費
+POST {{baseUrl}}/api/transactions
+Content-Type: {{contentType}}
+
+{
+  "amount": 150,
+  "note": "午餐 - 便當",
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
+}
+
+### IT2-5. 記錄晚餐消費
 POST {{baseUrl}}/api/transactions
 Content-Type: {{contentType}}
 
 {
   "amount": 200,
   "note": "晚餐 - 火鍋",
-  "date": "2026-02-22"
+  "date": "2026-02-23",
+  "categoryId": "{{foodCategory}}",
+  "accountId": "{{cashAccount}}"
 }
 
-### 6-6. 建立多筆測試資料 - 交通
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
+### IT2-6. 查看今天的食物支出
+GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-23&endDate=2026-02-23
 
-{
-  "amount": 50,
-  "note": "捷運儲值",
-  "date": "2026-02-21"
-}
+### IT2-7. 查看現金帳戶的所有交易
+GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}
 
-### 6-7. 建立多筆測試資料 - 娛樂
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
+### ========== 情境：月底對帳 ==========
 
-{
-  "amount": 350,
-  "note": "電影票",
-  "date": "2026-02-20"
-}
+### IT3-1. 查詢二月份所有收入（收入類別）
+# 先建立所有收入類別的交易，然後查詢
+GET {{baseUrl}}/api/transactions?categoryId={{salaryCategory}}&startDate=2026-02-01&endDate=2026-02-28
 
-### ========== Read ==========
+### IT3-2. 查詢二月份所有食物支出
+GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-01&endDate=2026-02-28
 
-### 7-1. 查詢交易列表 - 預設排序（日期降序）
-GET {{baseUrl}}/api/transactions
+### IT3-3. 查詢銀行帳戶的二月份交易明細
+GET {{baseUrl}}/api/transactions?accountId={{bankAccount}}&startDate=2026-02-01&endDate=2026-02-28
 
-### 7-2. 查詢交易列表 - 分頁（第 1 頁，每頁 5 筆）
-GET {{baseUrl}}/api/transactions?page=0&size=5
+### IT3-4. 查看所有帳戶餘額
+GET {{baseUrl}}/api/accounts
 
-### 7-3. 查詢交易列表 - 分頁（第 2 頁）
-GET {{baseUrl}}/api/transactions?page=1&size=5
 
-### 7-4. 查詢交易列表 - 依日期升序排列
-GET {{baseUrl}}/api/transactions?sort=date,asc
+###############################################################################
+# 快速建立完整測試資料
+###############################################################################
 
-### 7-5. 查詢交易列表 - 依金額降序排列
-GET {{baseUrl}}/api/transactions?sort=amount,desc
+### ========== 執行順序建議 ==========
+# 1. 建立類別（1-1 到 1-8）
+# 2. 建立帳戶（A1-1 到 A1-4）
+# 3. 複製 ID 到變數區
+# 4. 建立交易（T1-1 到 T1-9）
+# 5. 測試各種查詢（T2 到 T6）
 
-### 7-6. 查詢交易列表 - 每頁 3 筆，依金額升序
-GET {{baseUrl}}/api/transactions?page=0&size=3&sort=amount,asc
+### QS1. 快速建立：薪資類別 + 銀行帳戶 + 薪資入帳
+# 依序執行：IT1-1 → IT1-2 → IT1-3
 
-### 7-7. 查詢單筆交易（記得先執行 Create，複製 id 貼到變數）
-GET {{baseUrl}}/api/transactions/{{transactionId}}
+### QS2. 快速建立：食物類別 + 現金帳戶 + 一日三餐
+# 依序執行：IT2-1 → IT2-2 → IT2-3 → IT2-4 → IT2-5
 
-### ========== Update ==========
-
-### 8-1. 更新交易 - 修改所有欄位
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 1500,
-  "note": "更新後的交易：修正金額",
-  "date": "2026-02-24"
-}
-
-### 8-2. 更新交易 - 只改金額
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 999,
-  "note": "只改金額",
-  "date": "2026-02-23"
-}
-
-### 8-3. 更新交易 - 移除備註（設為 null）
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "note": null,
-  "date": "2026-02-23"
-}
-
-### ========== Delete ==========
-
-### 9-1. 刪除交易（會回傳 204 No Content）
-DELETE {{baseUrl}}/api/transactions/{{transactionId}}
-
-### ========== 錯誤測試 ==========
-
-### 10-1. 測試驗證錯誤 - 金額為負數
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": -100,
-  "note": "負數測試",
-  "date": "2026-02-23"
-}
-# 預期：400 Bad Request，訊息包含 "金額必須大於 0"
-
-### 10-2. 測試驗證錯誤 - 金額為 0
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 0,
-  "note": "零元測試",
-  "date": "2026-02-23"
-}
-# 預期：400 Bad Request
-
-### 10-3. 測試驗證錯誤 - 金額為 null
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "note": "沒有金額",
-  "date": "2026-02-23"
-}
-# 預期：400 Bad Request，訊息包含 "金額不能為空"
-
-### 10-4. 測試查詢不存在的 ID
-GET {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found，訊息包含 "找不到 ID"
-
-### 10-5. 測試更新不存在的 ID
-PUT {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "date": "2026-02-23"
-}
-# 預期：404 Not Found
-
-### 10-6. 測試刪除不存在的 ID
-DELETE {{baseUrl}}/api/transactions/00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
+### QS3. 驗證關聯正確性
+# 執行任一筆 T2-2，檢查回應是否包含：
+# - categoryId, categoryName, categoryType
+# - accountId, accountName, accountType
 
 
 ###############################################################################

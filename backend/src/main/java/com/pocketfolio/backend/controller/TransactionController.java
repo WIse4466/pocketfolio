@@ -9,16 +9,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
+
     private final TransactionService service;
 
     // POST /api/transactions
@@ -39,7 +42,36 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<Page<TransactionResponse>> getAll(
             @PageableDefault(size = 10, sort = "date", direction = Sort.Direction.DESC)
-            Pageable pageable) {
+            Pageable pageable,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID accountId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        if (categoryId != null && startDate != null && endDate != null) {
+            return ResponseEntity.ok(service.getTransactionsByCategoryAndDateRange(
+                    categoryId, startDate, endDate, pageable
+            ));
+        }
+
+        if (accountId != null && startDate != null && endDate != null) {
+            return ResponseEntity.ok(service.getTransactionsByAccountAndDateRange(
+                    accountId, startDate, endDate, pageable
+            ));
+        }
+
+        if (categoryId != null) {
+            return ResponseEntity.ok(service.getTransactionsByCategory(categoryId, pageable));
+        }
+
+        if (accountId != null) {
+            return ResponseEntity.ok(service.getTransactionsByAccount(accountId, pageable));
+        }
+
+        if (startDate != null && endDate != null) {
+            return ResponseEntity.ok(service.getTransactionsByDateRange(startDate, endDate, pageable));
+        }
+
         return ResponseEntity.ok(service.getAllTransactions(pageable));
     }
 
