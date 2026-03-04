@@ -1041,3 +1041,19 @@ GET {{baseUrl}}/api/assets/{{assetId}}
 
 # 3. 整合情境測試：
 #    - IS1-1 到 IS1-5: 完整投資帳戶流程
+
+// ==========================================
+// 📊 Statistics (統計與儀表板 API)
+// ==========================================
+
+### ST1-1. 取得指定月份的收支統計 (圓餅圖與淨額)
+# 這裡以 2026 年 3 月為例，你可以根據你剛才建立的交易資料年份/月份進行修改
+GET {{baseUrl}}/api/statistics/monthly/2026/2
+Content-Type: application/json
+
+### 
+
+### ST2-1. 取得所有帳戶的「動態餘額」總覽
+# 這裡會觸發 Service 去把所有的交易明細 (收入/支出) 加減回你的初始餘額上
+GET {{baseUrl}}/api/statistics/account-balances
+Content-Type: application/json
