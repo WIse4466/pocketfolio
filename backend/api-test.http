@@ -1057,3 +1057,142 @@ Content-Type: application/json
 # 這裡會觸發 Service 去把所有的交易明細 (收入/支出) 加減回你的初始餘額上
 GET {{baseUrl}}/api/statistics/account-balances
 Content-Type: application/json
+
+###############################################################################
+# AUTHENTICATION API (認證功能)
+###############################################################################
+
+### 變數：測試用戶
+@testEmail = test@example.com
+@testPassword = password123
+@authToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzcyNzA3MzQ2LCJleHAiOjE3NzI3OTM3NDZ9.e7fulA7nmBtQ0n3YvNq4FdXsrYa13-K8r2RgPHYXsZdEQFXFAU-RGuHVVPRkbXlzXsG80vsgxla0tHdpK4bMkQ
+
+### ========== 註冊 ==========
+
+### AUTH1-1. 註冊新用戶
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "username": "測試用戶",
+  "password": "{{testPassword}}"
+}
+# 成功後複製 token，更新 @authToken 變數
+
+### AUTH1-2. 註冊第二個用戶
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "user2@example.com",
+  "username": "用戶二",
+  "password": "password456"
+}
+
+### ========== 登入 ==========
+
+### AUTH2-1. 登入
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+# 成功後複製 token，更新 @authToken 變數
+
+### ========== 錯誤測試 ==========
+
+### AUTH3-1. 註冊 - Email 格式錯誤
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "invalid-email",
+  "username": "測試",
+  "password": "password123"
+}
+# 預期：400 Bad Request
+
+### AUTH3-2. 註冊 - 密碼太短
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test3@example.com",
+  "username": "測試三",
+  "password": "123"
+}
+# 預期：400 Bad Request，密碼至少需要 6 個字元
+
+### AUTH3-3. 註冊 - Email 已存在
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "username": "重複用戶",
+  "password": "password123"
+}
+# 預期：400 Bad Request，Email 已被註冊
+
+### AUTH3-4. 登入 - 密碼錯誤
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "password": "wrongpassword"
+}
+# 預期：401 Unauthorized
+
+### AUTH3-5. 登入 - 用戶不存在
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "notexist@example.com",
+  "password": "password123"
+}
+# 預期：401 Unauthorized
+
+### ========== 測試受保護的 API ==========
+
+### AUTH4-1. 未帶 Token 查詢交易（應該失敗）
+GET {{baseUrl}}/api/transactions
+# 預期：401 Unauthorized 或 403 Forbidden
+
+### AUTH4-2. 帶 Token 查詢交易（應該成功）
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer {{authToken}}
+# 預期：200 OK
+
+### AUTH4-3. 帶錯誤的 Token 查詢交易（應該失敗）
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer invalid-token-here
+# 預期：401 Unauthorized
+
+### AUTH4-4. 建立交易（需要 Token）
+POST {{baseUrl}}/api/transactions
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 100,
+  "note": "測試交易（需登入）",
+  "date": "2026-03-01"
+}
+# 預期：201 Created
+
+
+###############################################################################
+# 重要提醒：從現在開始，所有 API 請求都需要帶 Authorization Header
+###############################################################################
+
+# 修改所有現有的 API 測試，在每個請求加上：
+# Authorization: Bearer {{authToken}}
+
+# 例如：
+# GET {{baseUrl}}/api/categories
+# Authorization: Bearer {{authToken}}

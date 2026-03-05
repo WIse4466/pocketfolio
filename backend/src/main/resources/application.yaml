@@ -15,3 +15,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: your-super-secret-key-change-this-in-production-at-least-256-bits-long
+  expiration: 86400000 # 24 小時（單位：毫秒）
