@@ -1,28 +1,82 @@
 ###############################################################################
-# PocketFolio API 測試檔案
-# 使用方式：
-# 1. 在 VS Code 安裝 REST Client 擴充套件
-# 2. 點擊每個請求上方的 "Send Request" 執行
-# 3. 結果會顯示在右側視窗
+# PocketFolio API 測試檔案 (Phase 3 - 多用戶版本)
+# 
+# 重要：所有 API 都需要 Authorization Header（除了 /api/auth/**）
 ###############################################################################
 
 ### 環境變數設定
 @baseUrl = http://localhost:8080
 @contentType = application/json
 
-# 將實際取得的 ID 貼在這裡，方便後續測試使用
-@categoryId = 6099d922-b5a4-4da3-84f0-ed913d642024
-@transactionId = d9ca2fe9-e868-4bb2-b695-9313717726c4
+# 測試用戶 1
+@user1Email = alice@example.com
+@user1Password = password123
+@user1Token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhbGljZUBleGFtcGxlLmNvbSIsImlhdCI6MTc3MzMxNzk5NywiZXhwIjoxNzczNDA0Mzk3fQ.k7fBk1oeSrx8KwjSFj1Lm5iNxz94Z-jmwMYkWj6zk-2zYQrDENKo1zKNDF7CCodposkxKviFN7VhPkkVzadvOQ
+
+# 測試用戶 2
+@user2Email = bob@example.com
+@user2Password = password456
+@user2Token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJib2JAZXhhbXBsZS5jb20iLCJpYXQiOjE3NzMzMTgwMjUsImV4cCI6MTc3MzQwNDQyNX0.sseWd06Njam4BqlEg1t_FtH78trV7YU8vTmstS4xbVaGnumw9ZYfuFP3ZwpUnJGVhBy2NyUtjoq4fjVe6CN1VQ
+
+# 資源 ID（執行後更新）
+@categoryId = f32d108b-a9fd-4f0a-ad21-5d91bfc0bec7
+@accountId = f5a37384-8b60-43ce-94d3-45dd44a8d179
+@transactionId = 09574025-babc-4c0b-a9c8-eb8651d95764
+@assetId = 替換成實際的UUID
 
 
 ###############################################################################
-# CATEGORY API
+# STEP 1: 註冊與登入
 ###############################################################################
 
-### ========== Create ==========
+### 1-1. 註冊用戶 Alice
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
 
-### 1-1. 建立收入類別 - 薪資
+{
+  "email": "{{user1Email}}",
+  "username": "Alice",
+  "password": "{{user1Password}}"
+}
+# 成功後複製 token → @user1Token
+
+### 1-2. 註冊用戶 Bob
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "{{user2Email}}",
+  "username": "Bob",
+  "password": "{{user2Password}}"
+}
+# 成功後複製 token → @user2Token
+
+### 1-3. Alice 登入
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "{{user1Email}}",
+  "password": "{{user1Password}}"
+}
+
+### 1-4. Bob 登入
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "{{user2Email}}",
+  "password": "{{user2Password}}"
+}
+
+
+###############################################################################
+# STEP 2: Alice 建立基礎資料
+###############################################################################
+
+### 2-1. Alice 建立收入類別「薪資」
 POST {{baseUrl}}/api/categories
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
@@ -30,489 +84,34 @@ Content-Type: {{contentType}}
   "type": "INCOME",
   "description": "每月固定薪水"
 }
+# 複製 id → @categoryId
 
-### 1-2. 建立收入類別 - 投資收益
+### 2-2. Alice 建立支出類別「食物」
 POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "投資收益",
-  "type": "INCOME",
-  "description": "股票、基金等投資獲利"
-}
-
-### 1-3. 建立收入類別 - 獎金
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "獎金",
-  "type": "INCOME"
-}
-
-### 1-4. 建立支出類別 - 食物
-POST {{baseUrl}}/api/categories
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
   "name": "食物",
-  "type": "EXPENSE",
-  "description": "三餐、零食、飲料"
-}
-
-### 1-5. 建立支出類別 - 交通
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "交通",
-  "type": "EXPENSE",
-  "description": "捷運、公車、計程車、加油"
-}
-
-### 1-6. 建立支出類別 - 娛樂
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "娛樂",
-  "type": "EXPENSE",
-  "description": "電影、遊戲、旅遊"
-}
-
-### 1-7. 建立支出類別 - 投資
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "投資",
-  "type": "EXPENSE",
-  "description": "購買股票、基金等"
-}
-
-### 1-8. 建立支出類別 - 房租
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "房租",
   "type": "EXPENSE"
 }
 
-### ========== Read ==========
-
-### 2-1. 查詢所有類別
-GET {{baseUrl}}/api/categories
-
-### 2-2. 只查詢收入類別
-GET {{baseUrl}}/api/categories?type=INCOME
-
-### 2-3. 只查詢支出類別
-GET {{baseUrl}}/api/categories?type=EXPENSE
-
-### 2-4. 查詢單筆類別（記得先執行上面的 Create，複製回應的 id 貼到變數）
-GET {{baseUrl}}/api/categories/{{categoryId}}
-
-### ========== Update ==========
-
-### 3-1. 更新類別 - 修改名稱和描述
-PUT {{baseUrl}}/api/categories/{{categoryId}}
-Content-Type: {{contentType}}
-
-{
-  "name": "伙食費",
-  "type": "EXPENSE",
-  "description": "更新過的描述：包含早午晚餐"
-}
-
-### 3-2. 更新類別 - 只改描述
-PUT {{baseUrl}}/api/categories/{{categoryId}}
-Content-Type: {{contentType}}
-
-{
-  "name": "食物",
-  "type": "EXPENSE",
-  "description": "只更新描述欄位"
-}
-
-### ========== Delete ==========
-
-### 4-1. 刪除類別（會回傳 204 No Content）
-DELETE {{baseUrl}}/api/categories/{{categoryId}}
-
-### ========== 錯誤測試 ==========
-
-### 5-1. 測試驗證錯誤 - 名稱為空
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "",
-  "type": "INCOME"
-}
-# 預期：400 Bad Request，訊息包含 "類別名稱不能為空"
-
-### 5-2. 測試驗證錯誤 - 類型為空
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "測試類別"
-}
-# 預期：400 Bad Request，訊息包含 "類別類型不能為空"
-
-### 5-3. 測試重複名稱（需先建立一次薪資類別，再執行這個）
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "薪資",
-  "type": "INCOME"
-}
-# 預期：400 Bad Request，訊息包含 "類別名稱「薪資」已存在"
-
-### 5-4. 測試查詢不存在的 ID
-GET {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
-
-### 5-5. 測試更新不存在的 ID
-PUT {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
-Content-Type: {{contentType}}
-
-{
-  "name": "測試",
-  "type": "INCOME"
-}
-# 預期：404 Not Found
-
-### 5-6. 測試刪除不存在的 ID
-DELETE {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
-
-
-###############################################################################
-# TRANSACTION API (擴充版 - 包含類別與帳戶關聯)
-###############################################################################
-
-### 變數：先建立類別和帳戶，複製 ID 到這裡
-@salaryCategory = 79adf2ee-c43f-4bab-9e92-ec9ccb6ba6d3
-@foodCategory = 3804d718-9e37-4c3c-82a0-8b874e969a92
-@transportCategory = 5bbf89fc-0db9-42f3-98af-e147ee07843c
-@cashAccount = b9d771fa-413f-44b9-b0aa-d09b7478aaf2
-@bankAccount = dcb09728-c42e-4042-9bfd-46c12f3d48d1
-
-### ========== Create Transactions (含關聯) ==========
-
-### T1-1. 建立收入交易 - 薪資入帳到銀行
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 45000,
-  "note": "二月薪水",
-  "date": "2026-02-25",
-  "categoryId": "{{salaryCategory}}",
-  "accountId": "{{bankAccount}}"
-}
-
-### T1-2. 建立支出交易 - 食物（從現金支付）
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 150,
-  "note": "午餐便當",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### T1-3. 建立支出交易 - 交通（從銀行扣款）
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 500,
-  "note": "捷運月票",
-  "date": "2026-02-01",
-  "categoryId": "{{transportCategory}}",
-  "accountId": "{{bankAccount}}"
-}
-
-### T1-4. 建立交易 - 只有類別，沒有帳戶
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 80,
-  "note": "早餐",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}"
-}
-
-### T1-5. 建立交易 - 只有帳戶，沒有類別（未分類）
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 200,
-  "note": "未分類支出",
-  "date": "2026-02-22",
-  "accountId": "{{cashAccount}}"
-}
-
-### T1-6. 建立交易 - 沒有類別也沒有帳戶
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 50,
-  "note": "臨時支出",
-  "date": "2026-02-21"
-}
-
-### T1-7. 批次建立測試資料 - 食物支出
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 120,
-  "note": "晚餐",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### T1-8. 批次建立測試資料 - 早餐
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 60,
-  "note": "早餐",
-  "date": "2026-02-24",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### T1-9. 批次建立測試資料 - 交通
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 50,
-  "note": "計程車",
-  "date": "2026-02-20",
-  "categoryId": "{{transportCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### ========== Read Transactions (基本查詢) ==========
-
-### T2-1. 查詢所有交易（預設分頁）
-GET {{baseUrl}}/api/transactions
-
-### T2-2. 查詢單筆交易（應顯示類別和帳戶資訊）
-GET {{baseUrl}}/api/transactions/{{transactionId}}
-# 回應應包含：categoryName, categoryType, accountName, accountType
-
-### T2-3. 分頁查詢 - 第1頁，每頁5筆
-GET {{baseUrl}}/api/transactions?page=0&size=5
-
-### T2-4. 依日期升序排列
-GET {{baseUrl}}/api/transactions?sort=date,asc
-
-### T2-5. 依金額降序排列
-GET {{baseUrl}}/api/transactions?sort=amount,desc
-
-### ========== Read Transactions (依類別篩選) ==========
-
-### T3-1. 查詢「食物」類別的所有交易
-GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}
-
-### T3-2. 查詢「交通」類別的所有交易
-GET {{baseUrl}}/api/transactions?categoryId={{transportCategory}}
-
-### T3-3. 查詢「薪資」類別的所有交易
-GET {{baseUrl}}/api/transactions?categoryId={{salaryCategory}}
-
-### ========== Read Transactions (依帳戶篩選) ==========
-
-### T4-1. 查詢「現金」帳戶的所有交易
-GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}
-
-### T4-2. 查詢「銀行」帳戶的所有交易
-GET {{baseUrl}}/api/transactions?accountId={{bankAccount}}
-
-### ========== Read Transactions (依日期範圍篩選) ==========
-
-### T5-1. 查詢二月份的所有交易
-GET {{baseUrl}}/api/transactions?startDate=2026-02-01&endDate=2026-02-28
-
-### T5-2. 查詢最近7天的交易
-GET {{baseUrl}}/api/transactions?startDate=2026-02-16&endDate=2026-02-23
-
-### T5-3. 查詢本週的交易
-GET {{baseUrl}}/api/transactions?startDate=2026-02-17&endDate=2026-02-23
-
-### ========== Read Transactions (組合篩選) ==========
-
-### T6-1. 查詢「食物」類別 + 二月份
-GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-01&endDate=2026-02-28
-
-### T6-2. 查詢「現金」帳戶 + 二月份
-GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}&startDate=2026-02-01&endDate=2026-02-28
-
-### T6-3. 查詢「交通」類別 + 「銀行」帳戶 + 二月份（複雜組合）
-# 注意：目前 API 不支援同時篩選類別和帳戶，這是進階功能
-# 可以先篩選類別，或先篩選帳戶
-GET {{baseUrl}}/api/transactions?categoryId={{transportCategory}}&startDate=2026-02-01&endDate=2026-02-28
-
-### ========== Update Transactions ==========
-
-### T7-1. 更新交易 - 修改金額和類別
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 180,
-  "note": "午餐便當（修正金額）",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### T7-2. 更新交易 - 改變帳戶
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 150,
-  "note": "改用銀行支付",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{bankAccount}}"
-}
-
-### T7-3. 更新交易 - 清除類別（設為 null）
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "note": "移除類別",
-  "date": "2026-02-23",
-  "accountId": "{{cashAccount}}"
-}
-
-### T7-4. 更新交易 - 清除帳戶
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "note": "移除帳戶",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}"
-}
-
-### ========== Delete Transactions ==========
-
-### T8-1. 刪除交易
-DELETE {{baseUrl}}/api/transactions/{{transactionId}}
-
-### ========== Error Tests ==========
-
-### T9-1. 建立交易 - 類別 ID 不存在
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "date": "2026-02-23",
-  "categoryId": "00000000-0000-0000-0000-000000000000"
-}
-# 預期：404 Not Found，找不到類別
-
-### T9-2. 建立交易 - 帳戶 ID 不存在
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "date": "2026-02-23",
-  "accountId": "00000000-0000-0000-0000-000000000000"
-}
-# 預期：404 Not Found，找不到帳戶
-
-### T9-3. 查詢交易 - 類別 ID 不存在
-GET {{baseUrl}}/api/transactions?categoryId=00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
-
-### T9-4. 查詢交易 - 帳戶 ID 不存在
-GET {{baseUrl}}/api/transactions?accountId=00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
-
-
-###############################################################################
-# 整合測試情境 - 完整記帳流程
-###############################################################################
-
-### ========== 情境：發薪日完整記帳 ==========
-
-### IT1-1. 先建立收入類別「薪資」
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "薪資",
-  "type": "INCOME",
-  "description": "每月固定薪水"
-}
-# 複製回應的 id → @salaryCategory
-
-### IT1-2. 建立銀行帳戶
+### 2-3. Alice 建立銀行帳戶
 POST {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
   "name": "台新銀行",
   "type": "BANK",
   "initialBalance": 10000,
-  "description": "薪轉戶"
+  "description": "Alice 的薪轉戶"
 }
-# 複製回應的 id → @bankAccount
+# 複製 id → @accountId
 
-### IT1-3. 記錄薪資入帳
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 45000,
-  "note": "二月薪水",
-  "date": "2026-02-25",
-  "categoryId": "{{salaryCategory}}",
-  "accountId": "{{bankAccount}}"
-}
-
-### IT1-4. 查看銀行帳戶（餘額應該是 initialBalance + 交易）
-GET {{baseUrl}}/api/accounts/{{bankAccount}}
-# currentBalance 應該顯示正確餘額（Phase 2 最後會實作）
-
-### ========== 情境：日常消費記帳 ==========
-
-### IT2-1. 建立支出類別「食物」
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "食物",
-  "type": "EXPENSE"
-}
-# 複製 id → @foodCategory
-
-### IT2-2. 建立現金帳戶
+### 2-4. Alice 建立現金帳戶
 POST {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
@@ -520,470 +119,186 @@ Content-Type: {{contentType}}
   "type": "CASH",
   "initialBalance": 2000
 }
-# 複製 id → @cashAccount
 
-### IT2-3. 記錄早餐消費
-POST {{baseUrl}}/api/transactions
+### 2-5. Alice 查詢自己的所有類別
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{user1Token}}
+# 應該看到 2 個類別
+
+### 2-6. Alice 查詢自己的所有帳戶
+GET {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
+# 應該看到 2 個帳戶
+
+
+###############################################################################
+# STEP 3: Bob 建立自己的資料
+###############################################################################
+
+### 3-1. Bob 建立收入類別「兼職」
+POST {{baseUrl}}/api/categories
+Authorization: Bearer {{user2Token}}
 Content-Type: {{contentType}}
 
 {
-  "amount": 60,
-  "note": "早餐 - 三明治",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
+  "name": "兼職",
+  "type": "INCOME"
 }
 
-### IT2-4. 記錄午餐消費
+### 3-2. Bob 建立支出類別「交通」
+POST {{baseUrl}}/api/categories
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "交通",
+  "type": "EXPENSE"
+}
+
+### 3-3. Bob 建立銀行帳戶
+POST {{baseUrl}}/api/accounts
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "中國信託",
+  "type": "BANK",
+  "initialBalance": 5000,
+  "description": "Bob 的銀行帳戶"
+}
+
+### 3-4. Bob 查詢自己的所有類別
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{user2Token}}
+# 應該只看到 Bob 的 2 個類別（看不到 Alice 的）
+
+### 3-5. Bob 查詢自己的所有帳戶
+GET {{baseUrl}}/api/accounts
+Authorization: Bearer {{user2Token}}
+# 應該只看到 Bob 的 1 個帳戶（看不到 Alice 的）
+
+
+###############################################################################
+# STEP 4: 測試資料隔離 ✨ 重點測試
+###############################################################################
+
+### 4-1. Alice 建立交易
 POST {{baseUrl}}/api/transactions
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 45000,
+  "note": "Alice 的二月薪水",
+  "date": "2026-02-25",
+  "categoryId": "{{categoryId}}",
+  "accountId": "{{accountId}}"
+}
+# 複製 id → @transactionId
+
+### 4-2. Alice 查詢自己的交易
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer {{user1Token}}
+# 應該看到 1 筆交易
+
+### 4-3. Bob 查詢自己的交易
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer {{user2Token}}
+# 應該看到 0 筆交易（看不到 Alice 的）
+
+### 4-4. Bob 嘗試查詢 Alice 的交易（應該失敗）
+GET {{baseUrl}}/api/transactions/{{transactionId}}
+Authorization: Bearer {{user2Token}}
+# 預期：404 Not Found（找不到交易）
+
+### 4-5. Bob 嘗試刪除 Alice 的交易（應該失敗）
+DELETE {{baseUrl}}/api/transactions/{{transactionId}}
+Authorization: Bearer {{user2Token}}
+# 預期：404 Not Found
+
+### 4-6. Bob 嘗試使用 Alice 的類別建立交易（應該失敗）
+POST {{baseUrl}}/api/transactions
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 1000,
+  "note": "嘗試使用 Alice 的類別",
+  "date": "2026-02-25",
+  "categoryId": "{{categoryId}}"
+}
+# 預期：400 或 404（無權使用此類別）
+
+### 4-7. Bob 嘗試使用 Alice 的帳戶建立交易（應該失敗）
+POST {{baseUrl}}/api/transactions
+Authorization: Bearer {{user2Token}}
+Content-Type: {{contentType}}
+
+{
+  "amount": 1000,
+  "note": "嘗試使用 Alice 的帳戶",
+  "date": "2026-02-25",
+  "accountId": "{{accountId}}"
+}
+# 預期：400 或 404（無權使用此帳戶）
+
+
+###############################################################################
+# STEP 5: Alice 建立完整測試資料
+###############################################################################
+
+### 5-1. Alice 記錄食物支出
+POST {{baseUrl}}/api/transactions
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
   "amount": 150,
-  "note": "午餐 - 便當",
+  "note": "午餐",
   "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
+  "categoryId": "3869a4b6-533c-4191-9f46-9af953021881",
+  "accountId": "{{accountId}}"
 }
 
-### IT2-5. 記錄晚餐消費
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 200,
-  "note": "晚餐 - 火鍋",
-  "date": "2026-02-23",
-  "categoryId": "{{foodCategory}}",
-  "accountId": "{{cashAccount}}"
-}
-
-### IT2-6. 查看今天的食物支出
-GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-23&endDate=2026-02-23
-
-### IT2-7. 查看現金帳戶的所有交易
-GET {{baseUrl}}/api/transactions?accountId={{cashAccount}}
-
-### ========== 情境：月底對帳 ==========
-
-### IT3-1. 查詢二月份所有收入（收入類別）
-# 先建立所有收入類別的交易，然後查詢
-GET {{baseUrl}}/api/transactions?categoryId={{salaryCategory}}&startDate=2026-02-01&endDate=2026-02-28
-
-### IT3-2. 查詢二月份所有食物支出
-GET {{baseUrl}}/api/transactions?categoryId={{foodCategory}}&startDate=2026-02-01&endDate=2026-02-28
-
-### IT3-3. 查詢銀行帳戶的二月份交易明細
-GET {{baseUrl}}/api/transactions?accountId={{bankAccount}}&startDate=2026-02-01&endDate=2026-02-28
-
-### IT3-4. 查看所有帳戶餘額
-GET {{baseUrl}}/api/accounts
-
-
-###############################################################################
-# 快速建立完整測試資料
-###############################################################################
-
-### ========== 執行順序建議 ==========
-# 1. 建立類別（1-1 到 1-8）
-# 2. 建立帳戶（A1-1 到 A1-4）
-# 3. 複製 ID 到變數區
-# 4. 建立交易（T1-1 到 T1-9）
-# 5. 測試各種查詢（T2 到 T6）
-
-### QS1. 快速建立：薪資類別 + 銀行帳戶 + 薪資入帳
-# 依序執行：IT1-1 → IT1-2 → IT1-3
-
-### QS2. 快速建立：食物類別 + 現金帳戶 + 一日三餐
-# 依序執行：IT2-1 → IT2-2 → IT2-3 → IT2-4 → IT2-5
-
-### QS3. 驗證關聯正確性
-# 執行任一筆 T2-2，檢查回應是否包含：
-# - categoryId, categoryName, categoryType
-# - accountId, accountName, accountType
-
-
-###############################################################################
-# 整合測試情境
-###############################################################################
-
-### ========== 情境一：建立完整的收支記錄 ==========
-
-### S1-1. 先建立收入類別
-POST {{baseUrl}}/api/categories
-Content-Type: {{contentType}}
-
-{
-  "name": "兼職收入",
-  "type": "INCOME"
-}
-# 複製回應的 id，用於下一步
-
-### S1-2. 再建立對應的交易（未來 Phase 2 會綁定 categoryId）
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 5000,
-  "note": "週末家教",
-  "date": "2026-02-23"
-}
-
-### ========== 情境二：月底檢查所有交易 ==========
-
-### S2-1. 查詢所有交易（檢查這個月花了多少）
-GET {{baseUrl}}/api/transactions?page=0&size=50&sort=date,desc
-
-### S2-2. 查詢所有支出類別（看看支出都花在哪些項目）
-GET {{baseUrl}}/api/categories?type=EXPENSE
-
-### ========== 情境三：修正錯誤的記帳 ==========
-
-### S3-1. 查詢特定交易
-GET {{baseUrl}}/api/transactions/{{transactionId}}
-
-### S3-2. 發現金額錯誤，更新
-PUT {{baseUrl}}/api/transactions/{{transactionId}}
-Content-Type: {{contentType}}
-
-{
-  "amount": 120,
-  "note": "修正金額：原本記錯了",
-  "date": "2026-02-23"
-}
-
-### S3-3. 確認更新成功
-GET {{baseUrl}}/api/transactions/{{transactionId}}
-
-
-###############################################################################
-# 壓力測試（選用）
-###############################################################################
-
-### 批次建立 10 筆交易（手動執行 10 次）
-POST {{baseUrl}}/api/transactions
-Content-Type: {{contentType}}
-
-{
-  "amount": 100,
-  "note": "批次測試資料",
-  "date": "2026-02-20"
-}
-
-###############################################################################
-# ACCOUNT API
-###############################################################################
-
-### ========== Create ==========
-
-### A1-1. 建立現金帳戶
-POST {{baseUrl}}/api/accounts
-Content-Type: {{contentType}}
-
-{
-  "name": "錢包現金",
-  "type": "CASH",
-  "initialBalance": 5000,
-  "description": "隨身錢包"
-}
-
-### A1-2. 建立銀行帳戶
-POST {{baseUrl}}/api/accounts
-Content-Type: {{contentType}}
-
-{
-  "name": "台新銀行",
-  "type": "BANK",
-  "initialBalance": 50000,
-  "description": "薪轉戶"
-}
-
-### A1-3. 建立信用卡帳戶（負值表示欠款）
-POST {{baseUrl}}/api/accounts
-Content-Type: {{contentType}}
-
-{
-  "name": "花旗信用卡",
-  "type": "CREDIT_CARD",
-  "initialBalance": -15000,
-  "description": "本期帳單"
-}
-
-### A1-4. 建立投資帳戶
-POST {{baseUrl}}/api/accounts
-Content-Type: {{contentType}}
-
-{
-  "name": "富邦證券",
-  "type": "INVESTMENT",
-  "initialBalance": 100000,
-  "description": "股票投資帳戶"
-}
-
-### ========== Read ==========
-
-### A2-1. 查詢所有帳戶
-GET {{baseUrl}}/api/accounts
-
-### A2-2. 只查詢銀行帳戶
-GET {{baseUrl}}/api/accounts?type=BANK
-
-### A2-3. 只查詢投資帳戶
-GET {{baseUrl}}/api/accounts?type=INVESTMENT
-
-### A2-4. 搜尋帳戶（包含「銀行」關鍵字）
-GET {{baseUrl}}/api/accounts?search=銀行
-
-### A2-5. 查詢單筆帳戶
-@accountId = 57319826-5771-4bc8-9a59-284456bdc45f
+### 5-2. Alice 查看銀行帳戶餘額
 GET {{baseUrl}}/api/accounts/{{accountId}}
+Authorization: Bearer {{user1Token}}
+# currentBalance 應該 = 10000 + 45000 - 150 = 54850
 
-### ========== Update ==========
+### 5-3. Alice 查詢二月統計
+GET {{baseUrl}}/api/statistics/monthly/2026/2
+Authorization: Bearer {{user1Token}}
+# 應該顯示：總收入 45000，總支出 150
 
-### A3-1. 更新帳戶資訊
-PUT {{baseUrl}}/api/accounts/{{accountId}}
-Content-Type: {{contentType}}
+### 5-4. Alice 查詢所有帳戶餘額
+GET {{baseUrl}}/api/statistics/account-balances
+Authorization: Bearer {{user1Token}}
 
-{
-  "name": "台新 Richart",
-  "type": "BANK",
-  "initialBalance": 50000,
-  "description": "數位帳戶"
-}
 
-### ========== Delete ==========
+###############################################################################
+# STEP 6: 投資帳戶測試（Alice）
+###############################################################################
 
-### A4-1. 刪除帳戶
-DELETE {{baseUrl}}/api/accounts/{{accountId}}
-
-### ========== 錯誤測試 ==========
-
-### A5-1. 測試重複名稱
+### 6-1. Alice 建立投資帳戶
 POST {{baseUrl}}/api/accounts
-Content-Type: {{contentType}}
-
-{
-  "name": "台新銀行",
-  "type": "BANK",
-  "initialBalance": 1000
-}
-
-###############################################################################
-# ASSET API (資產持倉)
-###############################################################################
-
-### 變數：先建立帳戶，複製 ID 到這裡
-@investmentAccountId = 95348507-0c19-4010-a75a-fab01c81854a
-@assetId = ce4da864-9a20-4fbd-8e89-70eb79df884b
-
-### ========== Create Assets ==========
-
-### AS1-1. 建立股票資產 - 台積電
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "2330.TW",
-  "name": "台積電",
-  "quantity": 100,
-  "costPrice": 600,
-  "note": "長期持有"
-}
-
-### AS1-2. 建立股票資產 - 台達電
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "2308.TW",
-  "name": "台達電",
-  "quantity": 50,
-  "costPrice": 350
-}
-
-### AS1-3. 建立加密貨幣 - 比特幣
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "CRYPTO",
-  "symbol": "BTC",
-  "name": "比特幣",
-  "quantity": 0.5,
-  "costPrice": 1200000,
-  "note": "長期投資，定期定額"
-}
-
-### AS1-4. 建立加密貨幣 - 以太幣
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "CRYPTO",
-  "symbol": "ETH",
-  "name": "以太幣",
-  "quantity": 2,
-  "costPrice": 80000
-}
-
-### AS1-5. 建立基金資產
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "FUND",
-  "symbol": "0050.TW",
-  "name": "元大台灣50",
-  "quantity": 20,
-  "costPrice": 150
-}
-
-### ========== Read Assets ==========
-
-### AS2-1. 查詢單筆資產
-GET {{baseUrl}}/api/assets/{{assetId}}
-
-### AS2-2. 查詢某帳戶的所有資產
-GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}
-
-### AS2-3. 查詢某帳戶的股票資產
-GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=STOCK
-
-### AS2-4. 查詢某帳戶的加密貨幣資產
-GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=CRYPTO
-
-### AS2-5. 查詢某帳戶的基金資產
-GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}?type=FUND
-
-### ========== Update Assets ==========
-
-### AS3-1. 更新資產 - 調整持有數量（加碼）
-PUT {{baseUrl}}/api/assets/{{assetId}}
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "2330.TW",
-  "name": "台積電",
-  "quantity": 150,
-  "costPrice": 620,
-  "note": "加碼買入，平均成本提高"
-}
-
-### AS3-2. 更新資產 - 部分賣出
-PUT {{baseUrl}}/api/assets/{{assetId}}
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "CRYPTO",
-  "symbol": "BTC",
-  "name": "比特幣",
-  "quantity": 0.3,
-  "costPrice": 1200000,
-  "note": "部分獲利了結"
-}
-
-### ========== Delete Assets ==========
-
-### AS4-1. 刪除資產（全部賣出清倉）
-DELETE {{baseUrl}}/api/assets/{{assetId}}
-
-### ========== Error Tests ==========
-
-### AS5-1. 測試建立資產 - 帳戶不存在
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "00000000-0000-0000-0000-000000000000",
-  "type": "STOCK",
-  "symbol": "TEST",
-  "name": "測試",
-  "quantity": 1,
-  "costPrice": 100
-}
-# 預期：404 Not Found
-
-### AS5-2. 測試建立資產 - 數量為負數
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "TEST",
-  "name": "測試",
-  "quantity": -10,
-  "costPrice": 100
-}
-# 預期：400 Bad Request，數量必須大於 0
-
-### AS5-3. 測試建立資產 - 成本價為 0
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "TEST",
-  "name": "測試",
-  "quantity": 10,
-  "costPrice": 0
-}
-# 預期：400 Bad Request，成本價必須大於 0
-
-### AS5-4. 測試建立資產 - 重複的代號
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
-
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "STOCK",
-  "symbol": "2330.TW",
-  "name": "台積電",
-  "quantity": 10,
-  "costPrice": 600
-}
-# 預期：400 Bad Request，已有相同代號的資產
-
-### AS5-5. 測試查詢不存在的資產
-GET {{baseUrl}}/api/assets/00000000-0000-0000-0000-000000000000
-# 預期：404 Not Found
-
-
-###############################################################################
-# 整合測試情境 - 投資帳戶完整流程
-###############################################################################
-
-### ========== 情境：建立投資帳戶並新增持倉 ==========
-
-### IS1-1. 先建立投資帳戶
-POST {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
   "name": "富邦證券",
   "type": "INVESTMENT",
   "initialBalance": 0,
-  "description": "股票投資專用帳戶"
+  "description": "Alice 的股票帳戶"
 }
-# 複製回應的 id，更新上方的 @investmentAccountId
+# 複製投資帳戶 id
 
-### IS1-2. 新增第一筆資產 - 台積電
+### 6-2. Alice 新增資產 - 台積電
 POST {{baseUrl}}/api/assets
+Authorization: Bearer {{user1Token}}
 Content-Type: {{contentType}}
 
 {
-  "accountId": "{{investmentAccountId}}",
+  "accountId": "8e57ddd9-1c1b-4d0f-b5e1-8c226a571c29",
   "type": "STOCK",
   "symbol": "2330.TW",
   "name": "台積電",
@@ -991,208 +306,128 @@ Content-Type: {{contentType}}
   "costPrice": 600
 }
 
-### IS1-3. 新增第二筆資產 - 比特幣
-POST {{baseUrl}}/api/assets
-Content-Type: {{contentType}}
+### 6-3. Alice 查詢投資帳戶的資產
+GET {{baseUrl}}/api/assets/account/8e57ddd9-1c1b-4d0f-b5e1-8c226a571c29
+Authorization: Bearer {{user1Token}}
 
-{
-  "accountId": "{{investmentAccountId}}",
-  "type": "CRYPTO",
-  "symbol": "BTC",
-  "name": "比特幣",
-  "quantity": 0.5,
-  "costPrice": 1200000
-}
-
-### IS1-4. 查看帳戶資訊（應該顯示總市值）
-GET {{baseUrl}}/api/accounts/{{investmentAccountId}}
-# currentBalance 應該等於所有資產的市值加總
-
-### IS1-5. 查看帳戶的所有資產
-GET {{baseUrl}}/api/assets/account/{{investmentAccountId}}
-# 應該顯示：台積電 100股、比特幣 0.5個
-# 每筆都有 marketValue（市值）、profitLoss（損益）等計算欄位
-
-### ========== 情境：模擬價格變動（Phase 4 會自動化）==========
-
-### IS2-1. 手動更新台積電當前價格（模擬漲價）
-# Phase 4 會改用 API 自動更新，現在先手動測試
-# 注意：目前 API 沒有提供單獨更新 currentPrice 的端點
-# Phase 4 會加入 PATCH /api/assets/{id}/price 端點
-
-### IS2-2. 查看資產損益變化
-GET {{baseUrl}}/api/assets/{{assetId}}
-# 查看 profitLoss 和 profitLossPercent 欄位
+### 6-4. Bob 嘗試查詢 Alice 的資產（應該失敗）
+GET {{baseUrl}}/api/assets/account/8e57ddd9-1c1b-4d0f-b5e1-8c226a571c29
+Authorization: Bearer {{user2Token}}
+# 預期：404 Not Found
 
 
 ###############################################################################
-# 測試情境建議執行順序
+# STEP 7: 驗證完整資料隔離
 ###############################################################################
 
-# 1. 建立基礎資料（依序執行）：
-#    - 1-1 到 1-8: 建立 Category
-#    - A1-1 到 A1-4: 建立 Account（記得複製投資帳戶的 ID）
-#    - AS1-1 到 AS1-5: 建立 Asset
+### 7-1. Alice 查詢總覽
+# Categories
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{user1Token}}
 
-# 2. 查詢測試（驗證資料正確）：
-#    - 2-1 到 2-4: Category 查詢
-#    - A2-1 到A2-5: Account 查詢
-#    - AS2-1 到 AS2-5: Asset 查詢
+# Accounts
+GET {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
 
-# 3. 整合情境測試：
-#    - IS1-1 到 IS1-5: 完整投資帳戶流程
+# Transactions
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer {{user1Token}}
 
-// ==========================================
-// 📊 Statistics (統計與儀表板 API)
-// ==========================================
+### 7-2. Bob 查詢總覽
+# Categories
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{user2Token}}
 
-### ST1-1. 取得指定月份的收支統計 (圓餅圖與淨額)
-# 這裡以 2026 年 3 月為例，你可以根據你剛才建立的交易資料年份/月份進行修改
-GET {{baseUrl}}/api/statistics/monthly/2026/2
-Content-Type: application/json
+# Accounts
+GET {{baseUrl}}/api/accounts
+Authorization: Bearer {{user2Token}}
 
-### 
+# Transactions
+GET {{baseUrl}}/api/transactions
+Authorization: Bearer {{user2Token}}
 
-### ST2-1. 取得所有帳戶的「動態餘額」總覽
-# 這裡會觸發 Service 去把所有的交易明細 (收入/支出) 加減回你的初始餘額上
-GET {{baseUrl}}/api/statistics/account-balances
-Content-Type: application/json
+### 7-3. 驗證結果
+# Alice 應該看到：自己的類別、帳戶、交易、資產
+# Bob 應該看到：自己的類別、帳戶、交易（全部是空的或只有自己的）
+# 兩個用戶的資料完全隔離 ✅
+
 
 ###############################################################################
-# AUTHENTICATION API (認證功能)
+# STEP 8: 錯誤處理測試
 ###############################################################################
 
-### 變數：測試用戶
-@testEmail = test@example.com
-@testPassword = password123
-@authToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzcyNzA3MzQ2LCJleHAiOjE3NzI3OTM3NDZ9.e7fulA7nmBtQ0n3YvNq4FdXsrYa13-K8r2RgPHYXsZdEQFXFAU-RGuHVVPRkbXlzXsG80vsgxla0tHdpK4bMkQ
-
-### ========== 註冊 ==========
-
-### AUTH1-1. 註冊新用戶
-POST {{baseUrl}}/api/auth/register
-Content-Type: {{contentType}}
-
-{
-  "email": "{{testEmail}}",
-  "username": "測試用戶",
-  "password": "{{testPassword}}"
-}
-# 成功後複製 token，更新 @authToken 變數
-
-### AUTH1-2. 註冊第二個用戶
-POST {{baseUrl}}/api/auth/register
-Content-Type: {{contentType}}
-
-{
-  "email": "user2@example.com",
-  "username": "用戶二",
-  "password": "password456"
-}
-
-### ========== 登入 ==========
-
-### AUTH2-1. 登入
-POST {{baseUrl}}/api/auth/login
-Content-Type: {{contentType}}
-
-{
-  "email": "{{testEmail}}",
-  "password": "{{testPassword}}"
-}
-# 成功後複製 token，更新 @authToken 變數
-
-### ========== 錯誤測試 ==========
-
-### AUTH3-1. 註冊 - Email 格式錯誤
-POST {{baseUrl}}/api/auth/register
-Content-Type: {{contentType}}
-
-{
-  "email": "invalid-email",
-  "username": "測試",
-  "password": "password123"
-}
-# 預期：400 Bad Request
-
-### AUTH3-2. 註冊 - 密碼太短
-POST {{baseUrl}}/api/auth/register
-Content-Type: {{contentType}}
-
-{
-  "email": "test3@example.com",
-  "username": "測試三",
-  "password": "123"
-}
-# 預期：400 Bad Request，密碼至少需要 6 個字元
-
-### AUTH3-3. 註冊 - Email 已存在
-POST {{baseUrl}}/api/auth/register
-Content-Type: {{contentType}}
-
-{
-  "email": "{{testEmail}}",
-  "username": "重複用戶",
-  "password": "password123"
-}
-# 預期：400 Bad Request，Email 已被註冊
-
-### AUTH3-4. 登入 - 密碼錯誤
-POST {{baseUrl}}/api/auth/login
-Content-Type: {{contentType}}
-
-{
-  "email": "{{testEmail}}",
-  "password": "wrongpassword"
-}
+### 8-1. 未登入查詢交易（應該失敗）
+GET {{baseUrl}}/api/transactions
 # 預期：401 Unauthorized
 
-### AUTH3-5. 登入 - 用戶不存在
-POST {{baseUrl}}/api/auth/login
-Content-Type: {{contentType}}
-
-{
-  "email": "notexist@example.com",
-  "password": "password123"
-}
-# 預期：401 Unauthorized
-
-### ========== 測試受保護的 API ==========
-
-### AUTH4-1. 未帶 Token 查詢交易（應該失敗）
-GET {{baseUrl}}/api/transactions
-# 預期：401 Unauthorized 或 403 Forbidden
-
-### AUTH4-2. 帶 Token 查詢交易（應該成功）
-GET {{baseUrl}}/api/transactions
-Authorization: Bearer {{authToken}}
-# 預期：200 OK
-
-### AUTH4-3. 帶錯誤的 Token 查詢交易（應該失敗）
+### 8-2. 使用錯誤 Token（應該失敗）
 GET {{baseUrl}}/api/transactions
 Authorization: Bearer invalid-token-here
 # 預期：401 Unauthorized
 
-### AUTH4-4. 建立交易（需要 Token）
-POST {{baseUrl}}/api/transactions
-Authorization: Bearer {{authToken}}
-Content-Type: {{contentType}}
+### 8-3. Token 過期測試（需等 24 小時）
+# 24 小時後使用舊 token 應該會失敗
+```
 
-{
-  "amount": 100,
-  "note": "測試交易（需登入）",
-  "date": "2026-03-01"
-}
-# 預期：201 Created
+---
 
+## 🎯 執行測試流程
 
-###############################################################################
-# 重要提醒：從現在開始，所有 API 請求都需要帶 Authorization Header
-###############################################################################
+### Phase 1：基礎測試（5 分鐘）
 
-# 修改所有現有的 API 測試，在每個請求加上：
-# Authorization: Bearer {{authToken}}
+依序執行：
+```
+1-1 → 註冊 Alice
+1-2 → 註冊 Bob
+複製兩個 token 到變數區
+```
 
-# 例如：
-# GET {{baseUrl}}/api/categories
-# Authorization: Bearer {{authToken}}
+---
+
+### Phase 2：建立資料（5 分鐘）
+
+**Alice 的操作：**
+```
+2-1 → 建立類別「薪資」（複製 categoryId）
+2-2 → 建立類別「食物」
+2-3 → 建立帳戶「台新銀行」（複製 accountId）
+2-4 → 建立帳戶「錢包現金」
+2-5 → 查詢類別（應該看到 2 個）
+2-6 → 查詢帳戶（應該看到 2 個）
+```
+
+**Bob 的操作：**
+```
+3-1 → 建立類別「兼職」
+3-2 → 建立類別「交通」
+3-3 → 建立帳戶「中國信託」
+3-4 → 查詢類別（應該只看到自己的 2 個）✨
+3-5 → 查詢帳戶（應該只看到自己的 1 個）✨
+```
+
+---
+
+### Phase 3：資料隔離測試 🔥 重點
+```
+4-1 → Alice 建立交易（複製 transactionId）
+4-2 → Alice 查詢交易（應該有 1 筆）
+4-3 → Bob 查詢交易（應該是空的）✨
+4-4 → Bob 查詢 Alice 的交易（應該 404）✨
+4-5 → Bob 刪除 Alice 的交易（應該 404）✨
+4-6 → Bob 使用 Alice 的類別（應該失敗）✨
+4-7 → Bob 使用 Alice 的帳戶（應該失敗）✨
+```
+
+**預期結果：**
+- ✅ Bob 完全看不到 Alice 的資料
+- ✅ Bob 無法操作 Alice 的資源
+- ✅ 資料完全隔離
+
+---
+
+### Phase 4：統計功能測試
+```
+5-1 → Alice 記錄食物支出
+5-2 → Alice 查看帳戶餘額（應該正確計算）
+5-3 → Alice 查詢二月統計（應該顯示收支）
+5-4 → Alice 查詢所有帳戶餘額

@@ -34,6 +34,9 @@ public class GlobalExceptionHandler {
     //其他未預期錯誤 → 500
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+
+        ex.printStackTrace();
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(errorBody("伺服器發生錯誤，請稍後再試"));
     }

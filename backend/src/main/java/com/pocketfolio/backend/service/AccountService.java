@@ -7,6 +7,7 @@ import com.pocketfolio.backend.entity.*;
 import com.pocketfolio.backend.exception.ResourceNotFoundException;
 import com.pocketfolio.backend.repository.AccountRepository;
 import com.pocketfolio.backend.repository.TransactionRepository;
+import com.pocketfolio.backend.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,10 @@ public class AccountService {
 
     // ── Create ──────────────────────────────────────────
     public AccountResponse createAccount(AccountRequest request) {
-        // 檢查名稱是否重複
-        if (repository.existsByName(request.getName())) {
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        // 檢查當前用戶是否已有同名帳戶
+        if (repository.existsByUserIdAndName(currentUserId, request.getName())) {
             throw new IllegalArgumentException("帳戶名稱「" + request.getName() + "」已存在");
         }
 
@@ -38,47 +41,73 @@ public class AccountService {
         account.setDescription(request.getDescription());
         account.setCurrency(request.getCurrency());
 
+        // 設定用戶關聯
+        User user = new User();
+        user.setId(currentUserId);
+        account.setUser(user);
+
         return toResponse(repository.save(account));
     }
 
     // ── Read (單筆) ───────────────────────────────────────
     public AccountResponse getAccount(UUID id) {
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
         Account account = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "找不到 ID 為 " + id + " 的帳戶"));
+
+        // 驗證帳戶屬於當前用戶
+        if (!account.getUser().getId().equals(currentUserId)) {
+            throw new ResourceNotFoundException("找不到 ID 為 " + id + " 的帳戶");
+        }
+
         return toResponse(account);
     }
 
     // ── Read (所有) ───────────────────────────────────────
     public List<AccountResponse> getAllAccounts() {
-        return repository.findAll().stream()
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        return repository.findByUserId(currentUserId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     // ── Read (依類型) ─────────────────────────────────────
     public List<AccountResponse> getAccountsByType(AccountType type) {
-        return repository.findByType(type).stream()
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        return repository.findByUserIdAndType(currentUserId, type).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     // ── Read (搜尋) ───────────────────────────────────────
     public List<AccountResponse> searchAccounts(String keyword) {
-        return repository.findByNameContainingIgnoreCase(keyword).stream()
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        return repository.findByUserIdAndNameContainingIgnoreCase(currentUserId, keyword).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     // ── Update ───────────────────────────────────────────
     public AccountResponse updateAccount(UUID id, AccountRequest request) {
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
         Account account = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "找不到 ID 為 " + id + " 的帳戶"));
 
-        // 如果改了名稱，檢查新名稱是否與其他帳戶重複
+        // 驗證帳戶屬於當前用戶
+        if (!account.getUser().getId().equals(currentUserId)) {
+            throw new ResourceNotFoundException("找不到 ID 為 " + id + " 的帳戶");
+        }
+
+        // 如果改了名稱，檢查新名稱是否與當前用戶的其他帳戶重複
         if (!account.getName().equals(request.getName())
-                && repository.existsByName(request.getName())) {
+                && repository.existsByUserIdAndName(currentUserId, request.getName())) {
             throw new IllegalArgumentException("帳戶名稱「" + request.getName() + "」已存在");
         }
 
@@ -93,10 +122,17 @@ public class AccountService {
 
     // ── Delete ───────────────────────────────────────────
     public void deleteAccount(UUID id) {
-        if (!repository.existsById(id)) {
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        Account account = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "找不到 ID 為 " + id + " 的帳戶"));
+
+        // 驗證帳戶屬於當前用戶
+        if (!account.getUser().getId().equals(currentUserId)) {
             throw new ResourceNotFoundException("找不到 ID 為 " + id + " 的帳戶");
         }
-        // TODO Phase 2: 檢查是否有關聯的交易，若有則不能刪除
+
         repository.deleteById(id);
     }
 
@@ -118,42 +154,29 @@ public class AccountService {
     }
 
     // 計算當前餘額（目前只是回傳初始餘額）
-    // Phase 2 最後會加入交易計算邏輯
     private BigDecimal calculateCurrentBalance(Account account) {
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
 
         // 投資帳戶：餘額 = 所有資產的市值加總
         if (account.getType() == AccountType.INVESTMENT) {
             return account.getAssets().stream()
+                    .filter(asset -> asset.getUser().getId().equals(currentUserId))
                     .map(Asset::getMarketValue)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
-        // 其他帳戶：initialBalance + sum(收入) - sum(支出)
-        List<Transaction> transactions = transactionRepository
-                .findByAccountId(account.getId(), Pageable.unpaged())
-                .getContent();
+        // 其他帳戶：使用 Repository 的計算方法
+        BigDecimal netAmount = transactionRepository.calculateNetAmountByAccountIdAndUserId(
+                account.getId(), currentUserId);
 
-        BigDecimal transactionSum = transactions.stream()
-                .map(tx -> {
-                    // 如果有類別，依類別類型判斷
-                    if (tx.getCategory() != null) {
-                        return tx.getCategory().getType() == CategoryType.INCOME
-                                ? tx.getAmount()
-                                : tx.getAmount().negate();
-                    }
-                    // 沒有類別，預設為支出
-                    return tx.getAmount().negate();
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal result = account.getInitialBalance().add(transactionSum);
-
-        return result;
+        return account.getInitialBalance().add(netAmount);
     }
 
     // 取得所有帳戶餘額（含變動資訊）
     public List<AccountBalanceResponse> getAllAccountBalances() {
-        return repository.findAll().stream()
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        return repository.findByUserId(currentUserId).stream()
                 .map(this::toBalanceResponse)
                 .collect(Collectors.toList());
     }

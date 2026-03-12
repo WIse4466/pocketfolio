@@ -9,9 +9,10 @@ import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
-    // 依類型查詢（查詢所有收入類別 或 所有支出類別）
-    List<Category> findByType(CategoryType type);
+    List<Category> findByUserId(UUID userId);
 
-    // 依名稱查詢（檢查重複）
-    boolean existsByName(String name);
+    List<Category> findByUserIdAndType(UUID userId, CategoryType type);
+
+    // 檢查用戶是否有同名類別
+    boolean existsByUserIdAndName(UUID userId, String name);
 }

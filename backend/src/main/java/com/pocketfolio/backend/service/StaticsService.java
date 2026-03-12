@@ -4,6 +4,7 @@ import com.pocketfolio.backend.dto.MonthlySummaryResponse;
 import com.pocketfolio.backend.entity.CategoryType;
 import com.pocketfolio.backend.entity.Transaction;
 import com.pocketfolio.backend.repository.TransactionRepository;
+import com.pocketfolio.backend.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,11 +23,15 @@ public class StaticsService {
 
     // 月度收支統計
     public MonthlySummaryResponse getMonthlySummary(int year, int month) {
-        List<Transaction> transactions = transactionRepository.findByYearAndMonth(year, month);
+        UUID currentUserId = SecurityUtil.getCurrentUserId();
+
+        // 只查詢當前用戶的交易
+        List<Transaction> transactions = transactionRepository
+                .findByUserIdAndYearAndMonth(currentUserId, year, month);
 
         // 分離收入和支出
         Map<Boolean, List<Transaction>> byType = transactions.stream()
-                .filter(tx -> tx.getCategory() != null) // 過濾掉沒有類別的交易
+                .filter(tx -> tx.getCategory() != null)
                 .collect(Collectors.partitioningBy(
                         tx -> tx.getCategory().getType() == CategoryType.INCOME
                 ));

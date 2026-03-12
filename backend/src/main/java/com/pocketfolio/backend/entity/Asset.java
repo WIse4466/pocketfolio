@@ -46,6 +46,10 @@ public class Asset {
 
     private String note;  // 備註
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     // ────────────── 計算屬性（不存資料庫）──────────────
 
     @Transient

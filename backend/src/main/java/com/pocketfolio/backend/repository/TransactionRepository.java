@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.security.core.parameters.P;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,33 +15,35 @@ import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
-    Page<Transaction> findByCategoryId(UUID categoryId, Pageable pageable);
+    Page<Transaction> findByUserId(UUID userId, Pageable pageable);
 
-    Page<Transaction> findByAccountId(UUID accountId, Pageable pageable);
+    Page<Transaction> findByUserIdAndCategoryId(UUID userId, UUID categoryId, Pageable pageable);
 
-    Page<Transaction> findByDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<Transaction> findByUserIdAndAccountId(UUID userId, UUID accountId, Pageable pageable);
 
-    Page<Transaction> findByCategoryIdAndDateBetween(
-            UUID categoryId, LocalDate startDate, LocalDate endDate, Pageable pageable
+    Page<Transaction> findByUserIdAndDateBetween(UUID userId, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    Page<Transaction> findByUserIdAndAccountIdAndDateBetween(UUID userId, UUID accountId, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    Page<Transaction> findByUserIdAndCategoryIdAndDateBetween(UUID userId, UUID categoryId, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    // 統計：某用戶某帳戶的總金額（含收入/支出判斷)
+    @Query("SELECT COALESCE(SUM(CASE " +
+            "WHEN t.category IS NULL THEN -t.amount " +
+            "WHEN t.category.type = 'INCOME' THEN t.amount " +
+            "ELSE -t.amount END), 0) " +
+            "FROM Transaction t WHERE t.account.id = :accountId AND t.user.id = :userId")
+    BigDecimal calculateNetAmountByAccountIdAndUserId(
+            @Param("accountId") UUID accountId,
+            @Param("userId") UUID userId
     );
 
-    Page<Transaction> findByAccountIdAndDateBetween(
-            UUID accountId, LocalDate startDate, LocalDate endDate, Pageable pageable
+    // 查詢某用戶某年某月的所有交易
+    @Query("SELECT t FROM Transaction t WHERE t.user.id = :userId " +
+            "AND YEAR(t.date) = :year AND MONTH(t.date) = :month")
+    List<Transaction> findByUserIdAndYearAndMonth(
+            @Param("userId") UUID userId,
+            @Param("year") int year,
+            @Param("month") int month
     );
-
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.category.id = :categoryId")
-    BigDecimal sumAmountByCategoryId(@Param("categoryId") UUID categoryId);
-
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.account.id = :accountId")
-    BigDecimal sumAmountByAccountId(@Param("accountId") UUID accountId);
-
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
-            "WHERE t.category.id = :categoryId AND t.date BETWEEN :StartDate AND :endDate")
-    BigDecimal sumAmountByCategoryIdAndDateBetween(
-            @Param("categoryId") UUID categoryId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
-
-    @Query("SELECT t FROM Transaction t WHERE YEAR(t.date) = :year AND MONTH(t.date) = :month")
-    List<Transaction> findByYearAndMonth(@Param("year") int year, @Param("month") int month);
 }

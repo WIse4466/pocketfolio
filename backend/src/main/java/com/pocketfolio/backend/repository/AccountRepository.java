@@ -9,12 +9,15 @@ import java.util.UUID;
 
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
+    // 依用戶查詢
+    List<Account> findByUserId(UUID userId);
+
     // 依類型查詢
-    List<Account> findByType(AccountType type);
+    List<Account> findByUserIdAndType(UUID userId, AccountType type);
 
     // 依名稱查詢（檢查重複）
-    boolean existsByName(String name);
+    boolean existsByUserIdAndName(UUID userId, String name);
 
     // 依名稱模糊查詢（例如搜尋「台新」會找到「台新銀行」）
-    List<Account> findByNameContainingIgnoreCase(String keyword);
+    List<Account> findByUserIdAndNameContainingIgnoreCase(UUID userId, String keyword);
 }
