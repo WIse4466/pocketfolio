@@ -11,5 +11,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # volumes名稱：容器內PostgreSQL存放資料的路徑
 
+  redis:
+    image: redis:7-alpine
+    container_name: pocketfolio-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes # AOF (Append Only File) 資料持久化(從硬碟日誌檔還原)
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
+  redis_data:

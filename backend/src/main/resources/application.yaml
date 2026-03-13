@@ -16,6 +16,26 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
+
 jwt:
   secret: your-super-secret-key-change-this-in-production-at-least-256-bits-long
   expiration: 86400000 # 24 小時（單位：毫秒）
+
+# API Keys
+api:
+  coingecko:
+    base-url: https://api.coingecko.com/api/v3
+  yahoo-finance:
+    base-url: https://query1.finance.yahoo.com/v8/finance/chart
+
+# 定時任務設定
+scheduler:
+  price-update:
+    enabled: true
+    cron: "0 */5 * * * *" # 每5分鐘執行一次
+    initial-delay: 30000  # 啟動後30秒開始
