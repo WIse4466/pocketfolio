@@ -39,3 +39,7 @@ scheduler:
     enabled: true
     cron: "0 */5 * * * *" # 每5分鐘執行一次
     initial-delay: 30000  # 啟動後30秒開始
+
+logging:
+  level:
+    org.springframework.cache: TRACE

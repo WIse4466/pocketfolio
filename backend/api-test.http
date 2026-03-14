@@ -11,7 +11,7 @@
 # 測試用戶 1
 @user1Email = alice@example.com
 @user1Password = password123
-@user1Token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhbGljZUBleGFtcGxlLmNvbSIsImlhdCI6MTc3MzMxNzk5NywiZXhwIjoxNzczNDA0Mzk3fQ.k7fBk1oeSrx8KwjSFj1Lm5iNxz94Z-jmwMYkWj6zk-2zYQrDENKo1zKNDF7CCodposkxKviFN7VhPkkVzadvOQ
+@user1Token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhbGljZUBleGFtcGxlLmNvbSIsImlhdCI6MTc3MzQ5MDMxMCwiZXhwIjoxNzczNTc2NzEwfQ.rvGO1qR9RaXTHNEa-DUym3c8_usV5g4rvQhRQj8L9uWYVmvJvE1jCERmRFtomf1zZEsZLwX8ieyigLBzOUZBYw
 
 # 測試用戶 2
 @user2Email = bob@example.com
@@ -22,7 +22,7 @@
 @categoryId = f32d108b-a9fd-4f0a-ad21-5d91bfc0bec7
 @accountId = f5a37384-8b60-43ce-94d3-45dd44a8d179
 @transactionId = 09574025-babc-4c0b-a9c8-eb8651d95764
-@assetId = 替換成實際的UUID
+@assetId = 1a0528f8-6dba-4eb3-bfff-670152e06eda
 
 
 ###############################################################################
@@ -431,3 +431,126 @@ Authorization: Bearer invalid-token-here
 5-2 → Alice 查看帳戶餘額（應該正確計算）
 5-3 → Alice 查詢二月統計（應該顯示收支）
 5-4 → Alice 查詢所有帳戶餘額
+
+###############################################################################
+# PRICE API (價格更新與查詢)
+###############################################################################
+
+### ========== 查詢即時價格 ==========
+
+### P1-1. 查詢比特幣價格
+GET {{baseUrl}}/api/prices/BTC?type=CRYPTO
+Authorization: Bearer {{user1Token}}
+
+### P1-2. 查詢以太幣價格
+GET {{baseUrl}}/api/prices/ETH?type=CRYPTO
+Authorization: Bearer {{user1Token}}
+
+### P1-3. 查詢台積電價格
+GET {{baseUrl}}/api/prices/2330.TW?type=STOCK
+Authorization: Bearer {{user1Token}}
+
+### P1-4. 查詢蘋果股票價格
+GET {{baseUrl}}/api/prices/AAPL?type=STOCK
+Authorization: Bearer {{user1Token}}
+
+
+### ========== 手動更新價格 ==========
+
+### P2-1. 更新單一資產價格
+POST {{baseUrl}}/api/prices/update/asset/{{assetId}}
+Authorization: Bearer {{user1Token}}
+
+### P2-2. 更新我的所有資產價格
+POST {{baseUrl}}/api/prices/update/my-assets
+Authorization: Bearer {{user1Token}}
+
+
+### ========== 快取管理 ==========
+
+### P3-1. 清除所有價格快取
+DELETE {{baseUrl}}/api/prices/cache
+Authorization: Bearer {{user1Token}}
+
+### P3-2. 清除特定資產的價格快取
+DELETE {{baseUrl}}/api/prices/cache/BTC?type=CRYPTO
+Authorization: Bearer {{user1Token}}
+
+
+###############################################################################
+# 完整測試流程：價格更新
+###############################################################################
+
+### 情境：建立投資組合並更新價格
+
+### PF1-1. Alice 建立投資帳戶
+POST {{baseUrl}}/api/accounts
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "加密貨幣錢包",
+  "type": "INVESTMENT",
+  "initialBalance": 0
+}
+# 複製投資帳戶 ID
+
+### PF1-2. Alice 新增比特幣資產
+POST {{baseUrl}}/api/assets
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "accountId": "cf89b1b3-c0e5-47e9-8395-7d5fb5588ab0",
+  "type": "CRYPTO",
+  "symbol": "BTC",
+  "name": "比特幣",
+  "quantity": 0.1,
+  "costPrice": 50000,
+  "note": "長期持有"
+}
+# 複製資產 ID → @assetId
+
+### PF1-3. Alice 新增以太幣資產
+POST {{baseUrl}}/api/assets
+Authorization: Bearer {{user1Token}}
+Content-Type: {{contentType}}
+
+{
+  "accountId": "cf89b1b3-c0e5-47e9-8395-7d5fb5588ab0",
+  "type": "CRYPTO",
+  "symbol": "ETH",
+  "name": "以太幣",
+  "quantity": 2,
+  "costPrice": 3000
+}
+
+### PF1-4. 查詢比特幣即時價格（第一次會呼叫 API）
+GET {{baseUrl}}/api/prices/BTC?type=CRYPTO
+Authorization: Bearer {{user1Token}}
+
+### PF1-5. 再次查詢比特幣價格（應該從 Redis 快取讀取）
+GET {{baseUrl}}/api/prices/BTC?type=CRYPTO
+Authorization: Bearer {{user1Token}}
+# 查看 console log，應該顯示「從快取取得價格」
+
+### PF1-6. 更新比特幣資產的價格
+POST {{baseUrl}}/api/prices/update/asset/{{assetId}}
+Authorization: Bearer {{user1Token}}
+# 回應應包含：oldPrice, newPrice, changePercent
+
+### PF1-7. 查詢資產（價格應該已更新）
+GET {{baseUrl}}/api/assets/{{assetId}}
+Authorization: Bearer {{user1Token}}
+# currentPrice 應該是最新價格
+# profitLoss 和 profitLossPercent 應該重新計算
+
+### PF1-8. 更新所有資產價格
+POST {{baseUrl}}/api/prices/update/my-assets
+Authorization: Bearer {{user1Token}}
+# 應該回傳兩筆更新結果（BTC + ETH）
+
+### PF1-9. 查詢投資帳戶（餘額應該是所有資產市值）
+GET {{baseUrl}}/api/accounts/cf89b1b3-c0e5-47e9-8395-7d5fb5588ab0
+Authorization: Bearer {{user1Token}}
+# currentBalance = BTC市值 + ETH市值

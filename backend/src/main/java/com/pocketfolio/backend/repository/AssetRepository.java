@@ -9,6 +9,9 @@ import java.util.UUID;
 
 public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
+    // 查詢某用戶的所有資產
+    List<Asset> findByUserId(UUID userId);
+
     // 查詢某帳戶的所有資產
     List<Asset> findByUserIdAndAccountId(UUID userId, UUID accountId);
 
