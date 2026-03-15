@@ -43,3 +43,13 @@ scheduler:
 logging:
   level:
     org.springframework.cache: TRACE
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+    display-request-duration: true

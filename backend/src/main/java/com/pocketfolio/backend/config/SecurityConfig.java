@@ -43,6 +43,13 @@ public class SecurityConfig {
                     // 公開路徑（不需要登入）
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // 允許 CORS preflight
+                        // WebSocket 連線
+                        .requestMatchers("/ws/**").permitAll()
+                        // Swagger UI 和 API 說明書檔案
+                        .requestMatchers("/api-docs/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
                     // 其他所有 API 都需要認證
                         .anyRequest().authenticated()
 
