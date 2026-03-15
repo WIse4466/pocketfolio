@@ -2,6 +2,7 @@ package com.pocketfolio.backend.service;
 
 import com.pocketfolio.backend.dto.PriceData;
 import com.pocketfolio.backend.dto.PriceUpdateResponse;
+import com.pocketfolio.backend.dto.websocket.PriceUpdateMessage;
 import com.pocketfolio.backend.entity.Asset;
 import com.pocketfolio.backend.entity.AssetType;
 import com.pocketfolio.backend.repository.AssetRepository;
@@ -29,6 +30,7 @@ public class PriceService {
     private final CoinGeckoService coinGeckoService;
     private final YahooFinanceService yahooFinanceService;
     private final AssetRepository assetRepository;
+    private final WebSocketService webSocketService;
 
     /**
      * 取得即時價格（外部 Service 已自動快取）
@@ -95,6 +97,17 @@ public class PriceService {
                 asset.getName(), oldPrice, newPrice,
                 changePercent.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "",
                 changePercent);
+
+        // WebSocket 推播
+        PriceUpdateMessage wsMessage = PriceUpdateMessage.fromUpdate(
+                asset.getSymbol(),
+                asset.getName(),
+                oldPrice,
+                newPrice
+        );
+
+        // 廣播給所有用戶
+        webSocketService.broadcastPriceUpdate(wsMessage);
 
         return PriceUpdateResponse.builder()
                 .symbol(asset.getSymbol())

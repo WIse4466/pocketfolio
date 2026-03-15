@@ -1,0 +1,46 @@
+<!-- test-websocket.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<h1>PocketFolio WebSocket Test</h1>
+<div id="status">未連接</div>
+<div id="messages"></div>
+
+<script>
+    const socket = new SockJS('http://localhost:8080/ws');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function(frame) {
+        console.log('已連接: ' + frame);
+        document.getElementById('status').innerText = '已連接';
+
+        // 訂閱價格更新
+        stompClient.subscribe('/topic/price-updates', function(message) {
+            const update = JSON.parse(message.body);
+            console.log('收到價格更新:', update);
+
+            const div = document.getElementById('messages');
+            div.innerHTML += `<p>
+                ${update.assetName} (${update.symbol}):
+                $${update.oldPrice} → $${update.newPrice}
+                (${update.changePercent}%)
+            </p>`;
+        });
+
+        // 訂閱系統消息
+        stompClient.subscribe('/topic/system', function(message) {
+            const msg = JSON.parse(message.body);
+            console.log('收到系統消息:', msg);
+
+            const div = document.getElementById('messages');
+            div.innerHTML += `<p style="color: blue">[系統] ${msg.message}</p>`;
+        });
+    });
+</script>
+</body>
+</html>
