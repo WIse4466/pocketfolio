@@ -27,7 +27,6 @@ public class PriceAlertService {
 
     private final PriceAlertRepository alertRepository;
     private final AssetRepository assetRepository;
-    private final PriceService priceService;
 
     // ── Create ──────────────────────────────────────────
     public PriceAlertResponse createAlert(PriceAlertRequest request) {
@@ -67,7 +66,7 @@ public class PriceAlertService {
                 saved.getCondition(),
                 saved.getTargetPrice());
 
-        return toResponse(saved);
+        return toResponse(saved, null);
     }
 
     // ── Read (單筆) ───────────────────────────────────────
@@ -82,7 +81,7 @@ public class PriceAlertService {
             throw new ResourceNotFoundException("無權使用此資產");
         }
 
-        return toResponse(alert);
+        return toResponse(alert, null);
     }
 
     // ── Read (用戶的所有警報) ─────────────────────────────
@@ -90,7 +89,7 @@ public class PriceAlertService {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
 
         return alertRepository.findByUserId(currentUserId).stream()
-                .map(this::toResponse)
+                .map(alert -> toResponse(alert, null))
                 .collect(Collectors.toList());
     }
 
@@ -99,7 +98,7 @@ public class PriceAlertService {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
 
         return alertRepository.findByUserIdAndActiveTrue(currentUserId).stream()
-                .map(this::toResponse)
+                .map(alert -> toResponse(alert, null))
                 .collect(Collectors.toList());
     }
 
@@ -125,7 +124,7 @@ public class PriceAlertService {
         alert.setTriggered(false);
         alert.setTriggeredAt(null);
 
-        return toResponse(alertRepository.save(alert));
+        return toResponse(alertRepository.save(alert), null);
     }
 
     // ── Delete ───────────────────────────────────────────
@@ -164,7 +163,7 @@ public class PriceAlertService {
             alert.setTriggeredAt(null);
         }
 
-        return toResponse(alertRepository.save(alert));
+        return toResponse(alertRepository.save(alert), null);
     }
 
     // ── 檢查價格警報（核心邏輯）───────────────────────────
@@ -202,10 +201,7 @@ public class PriceAlertService {
     }
 
     // ── Helper: Entity → DTO ─────────────────────────────
-    private PriceAlertResponse toResponse(PriceAlert alert) {
-        // 取得當前價格
-        PriceData priceData = priceService.getPrice(alert.getSymbol(), alert.getAssetType());
-        BigDecimal currentPrice = priceData != null ? priceData.getPrice() : null;
+    private PriceAlertResponse toResponse(PriceAlert alert, BigDecimal currentPrice) {
 
         // 生成條件描述
         String conditionText = String.format("當價格%s $%s",

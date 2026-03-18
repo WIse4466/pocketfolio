@@ -1,5 +1,6 @@
 package com.pocketfolio.backend.scheduler;
 
+import com.pocketfolio.backend.service.AssetSnapshotService;
 import com.pocketfolio.backend.service.PriceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 public class PriceUpdateScheduler {
 
     private final PriceService priceService;
+    private final AssetSnapshotService snapshotService;
 
     /**
      * 定時更新所有資產價格
@@ -53,6 +55,25 @@ public class PriceUpdateScheduler {
         try {
             priceService.clearAllPriceCache();
             log.info("=== 定時任務完成：快取已清除 ===");
+
+        } catch (Exception e) {
+            log.error("=== 定時任務失敗：{} ===", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 定時建立資產快照
+     *
+     * 執行時機：每天凌晨 1 點
+     */
+    @Scheduled(cron = "0 0 1 * * *")
+    public void createDailySnapshots() {
+        log.info("=== 定時任務開始：建立每日資產快照 ===");
+        log.info("執行時間: {}", LocalDateTime.now());
+
+        try {
+            int count = snapshotService.createAllSnapshots();
+            log.info("=== 定時任務完成：成功建立 {} 筆快照 ===", count);
 
         } catch (Exception e) {
             log.error("=== 定時任務失敗：{} ===", e.getMessage(), e);

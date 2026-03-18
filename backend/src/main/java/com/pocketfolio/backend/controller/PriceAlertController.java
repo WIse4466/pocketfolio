@@ -2,7 +2,9 @@ package com.pocketfolio.backend.controller;
 
 import com.pocketfolio.backend.dto.PriceAlertRequest;
 import com.pocketfolio.backend.dto.PriceAlertResponse;
+import com.pocketfolio.backend.dto.PriceData;
 import com.pocketfolio.backend.service.PriceAlertService;
+import com.pocketfolio.backend.service.PriceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/price-alerts")
@@ -23,7 +26,8 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearerAuth")
 public class PriceAlertController {
 
-    private final PriceAlertService service;
+    private final PriceAlertService alertService;
+    private final PriceService priceService;
 
     @PostMapping
     @Operation(
@@ -32,14 +36,23 @@ public class PriceAlertController {
     )
     public ResponseEntity<PriceAlertResponse> createAlert(
             @Valid @RequestBody PriceAlertRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.createAlert(request));
+
+        PriceAlertResponse response = alertService.createAlert(request);
+
+        response = enrichWithCurrentPrice(response);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "查詢單個警報", description = "根據 ID 查詢警報詳情")
     public ResponseEntity<PriceAlertResponse> getAlert(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.getAlert(id));
+
+        PriceAlertResponse response = alertService.getAlert(id);
+
+        response = enrichWithCurrentPrice(response);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -51,10 +64,16 @@ public class PriceAlertController {
             @Parameter(description = "只顯示啟用中的警報")
             @RequestParam(required = false, defaultValue = "false") boolean activeOnly) {
 
-        if (activeOnly) {
-            return ResponseEntity.ok(service.getUserActiveAlerts());
-        }
-        return ResponseEntity.ok(service.getUserAlerts());
+        List<PriceAlertResponse> alerts = activeOnly
+                ? alertService.getUserActiveAlerts()
+                : alertService.getUserAlerts();
+
+        // ✅ 批次補上當前價格
+        List<PriceAlertResponse> enrichedAlerts = alerts.stream()
+                .map(this::enrichWithCurrentPrice)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(enrichedAlerts);
     }
 
     @PutMapping("/{id}")
@@ -62,7 +81,11 @@ public class PriceAlertController {
     public ResponseEntity<PriceAlertResponse> updateAlert(
             @PathVariable UUID id,
             @Valid @RequestBody PriceAlertRequest request) {
-        return ResponseEntity.ok(service.updateAlert(id, request));
+
+        PriceAlertResponse response = alertService.updateAlert(id, request);
+        response = enrichWithCurrentPrice(response);
+
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/toggle")
@@ -74,13 +97,36 @@ public class PriceAlertController {
             @PathVariable UUID id,
             @Parameter(description = "true=啟用, false=停用")
             @RequestParam boolean active) {
-        return ResponseEntity.ok(service.toggleAlert(id, active));
+
+        PriceAlertResponse response = alertService.toggleAlert(id, active);
+        response = enrichWithCurrentPrice(response);
+
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "刪除警報", description = "刪除指定的價格警報")
     public ResponseEntity<Void> deleteAlert(@PathVariable UUID id) {
-        service.deleteAlert(id);
+        alertService.deleteAlert(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Helper: 補充當前價格 ──────────────────────────────
+    private PriceAlertResponse enrichWithCurrentPrice(PriceAlertResponse response) {
+        try {
+            PriceData priceData = priceService.getPrice(
+                    response.getSymbol(),
+                    response.getAssetType()
+            );
+
+            if (priceData != null && priceData.getPrice() != null) {
+                response.setCurrentPrice(priceData.getPrice());
+            }
+        } catch (Exception e) {
+            // 查詢失敗不影響警報資料回傳
+            // currentPrice 保持為 null
+        }
+
+        return response;
     }
 }
