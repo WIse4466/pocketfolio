@@ -5,6 +5,7 @@ import com.pocketfolio.backend.dto.PriceUpdateResponse;
 import com.pocketfolio.backend.dto.websocket.PriceUpdateMessage;
 import com.pocketfolio.backend.entity.Asset;
 import com.pocketfolio.backend.entity.AssetType;
+import com.pocketfolio.backend.entity.PriceAlert;
 import com.pocketfolio.backend.repository.AssetRepository;
 import com.pocketfolio.backend.service.external.CoinGeckoService;
 import com.pocketfolio.backend.service.external.YahooFinanceService;
@@ -31,6 +32,7 @@ public class PriceService {
     private final YahooFinanceService yahooFinanceService;
     private final AssetRepository assetRepository;
     private final WebSocketService webSocketService;
+    private final PriceAlertService priceAlertService;
 
     /**
      * 取得即時價格（外部 Service 已自動快取）
@@ -108,6 +110,21 @@ public class PriceService {
 
         // 廣播給所有用戶
         webSocketService.broadcastPriceUpdate(wsMessage);
+
+        // 檢查價格警報
+        List<PriceAlert> triggeredAlerts = priceAlertService.checkPriceAlerts(
+                asset.getSymbol(),
+                newPrice
+        );
+
+        // 如果有警報被觸發，推送通知
+        triggeredAlerts.forEach(alert -> {
+            webSocketService.sendPriceAlertToUser(
+                    alert.getUser().getId(),
+                    alert,
+                    newPrice
+            );
+        });
 
         return PriceUpdateResponse.builder()
                 .symbol(asset.getSymbol())
