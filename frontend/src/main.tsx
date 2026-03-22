@@ -1,10 +1,19 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { ConfigProvider } from 'antd';
+import zhTW from 'antd/locale/zh_TW';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-tw';
+import App from './App.tsx';
+import './index.css';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// 設定 dayjs 語言
+dayjs.locale('zh-tw');
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ConfigProvider locale={zhTW}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>
+);

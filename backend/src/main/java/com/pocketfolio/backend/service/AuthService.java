@@ -32,15 +32,15 @@ public class AuthService {
             throw new IllegalArgumentException("Email 已被註冊");
         }
 
-        // 檢查 username 是否已存在
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("使用者名稱已被使用");
+        // 檢查 displayname 是否已存在
+        if (userRepository.existsByDisplayName(request.getDisplayName())) {
+            throw new IllegalArgumentException("顯示名稱已被使用");
         }
 
         // 建立新用戶
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setUsername(request.getUsername());
+        user.setDisplayName(request.getDisplayName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());
@@ -54,7 +54,7 @@ public class AuthService {
                 .token(token)
                 .userId(savedUser.getId())
                 .email(savedUser.getEmail())
-                .username(savedUser.getUsername())
+                .displayName(savedUser.getDisplayName())
                 .build();
     }
 
@@ -81,7 +81,7 @@ public class AuthService {
                 .token(token)
                 .userId(user.getId())
                 .email(user.getEmail())
-                .username(user.getUsername())
+                .displayName(user.getDisplayName())
                 .build();
     }
 }

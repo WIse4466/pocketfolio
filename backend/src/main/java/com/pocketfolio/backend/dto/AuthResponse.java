@@ -12,5 +12,5 @@ public class AuthResponse {
     private String type = "Bearer";  // Token 類型
     private UUID userId;
     private String email;
-    private String username;
+    private String displayName;
 }

@@ -26,7 +26,7 @@ public class User implements UserDetails {
     private String email;  // 使用 email 作為登入帳號
 
     @Column(nullable = false, unique = true)
-    private String username;  // 顯示名稱
+    private String displayName;  // 顯示名稱
 
     @Column(nullable = false)
     private String password;  // BCrypt 加密後的密碼
