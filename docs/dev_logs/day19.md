@@ -35,3 +35,46 @@
 ### 4. 實作控制台與 404 頁面 (`src/pages/Dashboard.tsx` & `NotFound.tsx`)
 * **Dashboard：** 運用 Ant Design 的 `<Row>`, `<Col>` 網格系統，達成完美響應式 (RWD) 排版（手機 1 欄、平板 2 欄、電腦 4 欄）。並利用 `<Statistic>` 建立專業的財務數據卡片（目前為靜態佔位符 Placeholder，待 Phase 6 串接真實 API）。
 * **NotFound：** 運用 CSS Flexbox (`display: flex`, `align-items: center`, `justify-content: center`) 搭配 AntD 的 `<Result status="404">`，優雅處理迷路的使用者。
+
+# Phase 5 - 核心功能實作與 React 基礎觀念解析
+
+## 🌟 核心觀念：白話文圖解 React 運作邏輯
+
+今天我們深入拆解了 `TransactionList.tsx` (交易紀錄清單) 這個複雜的元件，並把現代前端的術語翻譯成了生活化的概念：
+
+### 1. 基礎語法解密
+* **`const` (常數箱子)：** 準備一個貼著標籤的專屬箱子，裡面可以裝「變數 (資料)」，也可以裝「函式 (動作說明書)」。
+* **`=>` (箭頭函式 Arrow Function)：** 現代 JavaScript 撰寫「動作說明書」的語法。公式為 `(傳入的材料) => { 執行的動作 }`。
+
+### 2. React 的核心魔法 (Hooks)
+* **`useState` (大腦記憶體與遙控器)：** 例如 `const [loading, setLoading] = useState(false);`
+  這會產生一個記憶變數 (`loading`) 以及一個專屬的遙控器 (`setLoading`)。只要按下遙控器改變狀態，畫面就會瞬間自動重繪。
+* **`useEffect` (全自動感應器)：** 設定好監視目標（例如 `[filters]`），只要目標一發生變化，就會自動執行裡面設定的動作（例如：重新打 API 拿最新資料）。
+
+### 3. AJAX 與 CRUD 的完美結合
+傳統網頁送出表單會導致「整個畫面閃爍重載 (Reload)」。現代單頁應用程式 (SPA) 則是透過 **AJAX (非同步請求)** 像服務生一樣在背景跑腿：
+* **【C】新增 (Create)：** `transactionApi.createTransaction` (POST)
+* **【R】讀取 (Read)：** `loadTransactions` (GET)
+* **【U】更新 (Update)：** `transactionApi.updateTransaction` (PUT)
+* **【D】刪除 (Delete)：** `transactionApi.deleteTransaction` (DELETE)
+* **UX 亮點：** 每次執行完 C、U、D 動作後，自動呼叫一次 R (`loadTransactions`)，讓畫面不需重整就能顯示最新狀態。
+
+---
+
+## 🛠️ 實作紀錄與踩坑 (Gotchas)
+
+### 1. 建立「交易紀錄戰情室」 (`TransactionList.tsx`)
+整合了 Ant Design 最強大的幾個積木：
+* **`<Table>` 與 `columns` 設計圖：** 利用 `render` 屬性充當化妝師，針對不同的資料狀態（如收入/支出）自動改變文字顏色、加上 `+`/`-` 符號與 Tag 標籤。
+* **`<Modal>` 與 `<Form>`：** 共用同一個隱藏的彈出視窗來處理「新增」與「編輯」。透過判斷大腦裡的 `editingTransaction` 是 `null` 還是有資料，來決定送出表單時要執行 Create 還是 Update。
+
+### 2. 修復 TypeScript 過度推斷的問題
+* **現象：** 宣告 `filters` 狀態時，因為初始值皆為 `undefined`，導致 TS 報錯 `Type 'string' is not assignable to type 'undefined'`。
+* **解法：** 使用泛型 `<{ ... }>` 明確宣告型別，告訴 TS 督導這些欄位未來會裝入字串。
+  ```typescript
+  const [filters, setFilters] = useState<{
+    categoryId?: string;
+    accountId?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({ ... });
