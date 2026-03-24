@@ -8,6 +8,7 @@ import TransactionList from '@/pages/transactions/TransactionList';
 import CategoryList from '@/pages/categories/CategoryList';
 import AccountList from '@/pages/accounts/AccountList';
 import NotFound from '@/pages/NotFound';
+import AssetList from '@/pages/assets/AssetList';
 
 // 受保護路由組件
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
       {
         path: 'accounts',
         element: <AccountList />,
+      },
+      {
+        path: 'assets',
+        element: <AssetList />,
       },
     ],
   },

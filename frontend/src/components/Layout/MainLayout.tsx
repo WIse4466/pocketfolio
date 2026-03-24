@@ -51,6 +51,12 @@ const MainLayout = () => {
       onClick: () => navigate('/accounts'),
     },
     {
+      key: '/assets',
+      icon: <LineChartOutlined />,
+      label: '資產管理',
+      onClick: () => navigate('/assets'),
+    },
+    {
       key: '/statistics',
       icon: <LineChartOutlined />,
       label: '統計分析',
