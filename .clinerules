@@ -1,0 +1,62 @@
+# PocketFolio - Claude Code Configuration
+
+project_name: PocketFolio
+project_type: Full-stack Web Application
+tech_stack:
+  backend:
+    - Spring Boot 3.5.10
+    - Java 17
+    - PostgreSQL 15
+    - Redis 7
+    - JWT Authentication
+  frontend:
+    - React 18
+    - TypeScript
+    - Vite
+    - Ant Design
+    - Zustand
+
+# 重要文檔（優先閱讀）
+documentation:
+  - docs/PROJECT_CONTEXT.md
+  - docs/CODING_STANDARDS.md
+  - docs/TODO.md
+  - docs/CLAUDE_CODE_GUIDE.md
+  - README.md
+
+# 編碼風格
+coding_style:
+  java:
+    - 使用 Lombok
+    - Service 層方法分組（Create, Read, Update, Delete, Helper）
+    - 所有 API 都要有 Swagger 註解
+    - Log 使用表情符號標記重要訊息
+  typescript:
+    - 使用 interface 而非 type（除非必要）
+    - 組件內部按照 State, Effects, Handlers, Render 順序
+    - 所有 API 調用都要 try-catch
+
+# 重要規則
+critical_rules:
+  - User Entity 使用 displayName 而非 username
+  - 所有查詢都必須過濾 userId（資料隔離）
+  - 不要建立 Service 之間的循環依賴
+  - 前端只儲存 Token，不儲存密碼
+  - 所有表單都要驗證
+
+# 當前優先任務
+current_priorities:
+  - WebSocket 即時價格更新
+  - 資產歷史快照頁面
+  - 資料庫索引優化
+
+# 測試命令
+test_commands:
+  backend: "./mvnw test"
+  frontend: "npm run build"
+
+# 啟動命令
+start_commands:
+  database: "docker-compose up -d"
+  backend: "cd backend && ./mvnw spring-boot:run"
+  frontend: "cd frontend && npm run dev"
