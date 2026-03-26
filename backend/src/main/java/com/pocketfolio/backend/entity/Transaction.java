@@ -8,7 +8,9 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", indexes = {
+    @Index(name = "idx_transaction_user_date", columnList = "user_id, date")
+})
 @Getter @Setter
 public class Transaction {
 
