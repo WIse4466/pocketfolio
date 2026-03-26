@@ -7,6 +7,7 @@ import {
   TagsOutlined,
   BankOutlined,
   LineChartOutlined,
+  HistoryOutlined,
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -55,6 +56,12 @@ const MainLayout = () => {
       icon: <LineChartOutlined />,
       label: '資產管理',
       onClick: () => navigate('/assets'),
+    },
+    {
+      key: '/history',
+      icon: <HistoryOutlined />,
+      label: '資產走勢',
+      onClick: () => navigate('/history'),
     },
     {
       key: '/statistics',
