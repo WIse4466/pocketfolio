@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Avatar, Dropdown, Space, Typography } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Space, Typography, Badge, Tooltip } from 'antd';
 import {
   DashboardOutlined,
   TransactionOutlined,
@@ -12,8 +12,11 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  WifiOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
+import { useWebSocketStore } from '@/store/websocketStore';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -24,6 +27,10 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { isConnected } = useWebSocketStore();
+
+  // 啟動全域 WebSocket 連線
+  useWebSocket();
 
   // 側邊欄選單項目
   const menuItems: MenuProps['items'] = [
@@ -98,9 +105,9 @@ const MainLayout = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       {/* 側邊欄 */}
-      <Sider 
-        trigger={null} 
-        collapsible 
+      <Sider
+        trigger={null}
+        collapsible
         collapsed={collapsed}
         style={{
           overflow: 'auto',
@@ -157,13 +164,28 @@ const MainLayout = () => {
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </div>
 
-          {/* 用戶資訊 */}
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} />
-              <Text strong>{user?.displayName || '用戶'}</Text>
-            </Space>
-          </Dropdown>
+          <Space size="middle">
+            {/* 即時連線狀態 */}
+            <Tooltip title={isConnected ? '即時更新已連線' : '即時更新未連線'}>
+              <Badge
+                status={isConnected ? 'success' : 'default'}
+                text={
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    <WifiOutlined style={{ marginRight: 4 }} />
+                    {isConnected ? '即時' : '離線'}
+                  </Text>
+                }
+              />
+            </Tooltip>
+
+            {/* 用戶資訊 */}
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} />
+                <Text strong>{user?.displayName || '用戶'}</Text>
+              </Space>
+            </Dropdown>
+          </Space>
         </Header>
 
         {/* 內容區 */}

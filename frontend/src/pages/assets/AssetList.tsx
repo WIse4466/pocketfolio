@@ -33,6 +33,7 @@ import dayjs from 'dayjs';
 import { assetApi } from '@/api/asset.api';
 import { accountApi } from '@/api/account.api';
 import { priceApi } from '@/api/price.api';
+import { useWebSocketStore } from '@/store/websocketStore';
 import type { Asset, AssetRequest, AssetType } from '@/types/asset.types';
 import type { Account } from '@/types/account.types';
 import type { ColumnsType } from 'antd/es/table';
@@ -49,11 +50,19 @@ const AssetList = () => {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [updating, setUpdating] = useState(false);
   const [form] = Form.useForm();
+  const { lastPriceUpdateAt } = useWebSocketStore();
 
   // 載入資料
   useEffect(() => {
     loadAccounts();
   }, []);
+
+  // 後端推播價格更新時自動 reload
+  useEffect(() => {
+    if (lastPriceUpdateAt && selectedAccount) {
+      loadAssets();
+    }
+  }, [lastPriceUpdateAt]);
 
   useEffect(() => {
     if (selectedAccount) {
