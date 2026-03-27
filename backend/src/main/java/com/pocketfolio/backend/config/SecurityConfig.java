@@ -95,8 +95,10 @@ public class SecurityConfig {
 
         // 允許的來源（前端 URL）
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",  // Vite 開發伺服器
-                "http://localhost:3000"   // React 開發伺服器
+                "http://localhost:5173",               // Vite 開發伺服器
+                "http://localhost:3000",               // React 開發伺服器
+                "https://pocketfolio-prod.web.app",   // Firebase Hosting
+                "https://pocketfolio-prod.firebaseapp.com" // Firebase Hosting (備用網域)
         ));
 
         // 允許的 HTTP 方法
