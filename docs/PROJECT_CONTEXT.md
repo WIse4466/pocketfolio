@@ -200,24 +200,29 @@ npm run dev
 - [x] 類別管理 CRUD
 - [x] 帳戶管理 CRUD
 
-**Phase 6: 進階功能 (進行中)**
+**Phase 6: 進階功能 ✅ 已完成**
 - [x] 資產管理頁面
 - [x] 統計分析頁面（圖表）
 - [x] 價格警報頁面
 - [x] Dashboard 整合真實資料
-- [ ] WebSocket 即時價格更新
-- [ ] 資產歷史快照頁面
-- [ ] 響應式優化
-- [ ] 效能優化
+- [x] WebSocket 即時價格更新（STOMP + SockJS 全域連線）
+- [x] 資產歷史快照頁面（投資組合走勢圖）
+- [x] 資料庫複合索引優化（user_id, date）
 
 ### ⬜ 待完成 (Phase 7)
 
-- [ ] Docker 生產環境配置
-- [ ] CI/CD Pipeline
+**部署優先：**
+- [ ] 後端 Dockerfile（multi-stage build）
+- [ ] 前端 build 設定（環境變數指向 Cloud Run URL）
+- [ ] GCP 環境設定（Cloud Run + Cloud SQL + Artifact Registry）
+- [ ] GitHub Actions CI/CD Pipeline
+- [ ] Upstash Redis 串接（取代本地 Redis）
+
+**部署後持續改進：**
+- [ ] Token 過期主動偵測（前端 UX 修復）
+- [ ] 響應式優化（手機版）
+- [ ] 效能優化（代碼分割、懶加載）
 - [ ] 完整測試（單元測試 + 整合測試）
-- [ ] 效能測試與優化
-- [ ] 安全掃描
-- [ ] 部署文檔
 
 ---
 

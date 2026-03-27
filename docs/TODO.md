@@ -1,62 +1,56 @@
 # PocketFolio 待辦事項
 
-更新時間：2026-03-XX
+更新時間：2026-03-27
 
 ---
 
-## 🔴 高優先級（Phase 6 完成前）
+## ✅ Phase 6 已全部完成
 
-### 1. WebSocket 即時價格更新
-**負責：** 前端
-**預計時間：** 2-3 小時
-**任務：**
-- [ ] 安裝 sockjs-client 和 @stomp/stompjs
-- [ ] 建立 WebSocket 連接服務
-- [ ] 訂閱 /topic/price-updates
-- [ ] 訂閱 /user/queue/alerts
-- [ ] 資產頁面整合即時更新
-- [ ] 顯示連接狀態
-
-**參考：**
-- 後端 WebSocket 配置：`backend/src/main/java/com/pocketfolio/backend/config/WebSocketConfig.java`
-- 測試頁面：`backend/src/main/resources/static/ws-test.html`
+- [x] WebSocket 即時價格更新（STOMP + SockJS，全域連線）
+- [x] 資產歷史快照頁面（投資組合走勢圖）
+- [x] 資料庫複合索引（user_id, date）
 
 ---
 
-### 2. 資產歷史快照頁面
-**負責：** 前端
-**預計時間：** 2-3 小時
-**任務：**
-- [ ] 建立 AssetHistoryPage.tsx
-- [ ] API 整合（snapshot.api.ts）
-- [ ] 資產走勢圖表（Recharts LineChart）
-- [ ] 投資組合總覽圖表
-- [ ] 日期範圍選擇器
+## 🔴 Phase 7 優先：雲端部署
 
-**API Endpoints：**
-- GET `/api/snapshots/asset/{id}/history?days=30`
-- GET `/api/snapshots/portfolio/history?days=30`
+**部署目標架構：**
+- 前端：Firebase Hosting（靜態 CDN）
+- 後端：GCP Cloud Run（容器化 Spring Boot）
+- 資料庫：GCP Cloud SQL（managed PostgreSQL）
+- 快取：Upstash（serverless Redis，免費）
+- CI/CD：GitHub Actions
 
----
+### 1. 後端容器化
+**預計時間：** 1-2 小時
+- [ ] 撰寫後端 `Dockerfile`（multi-stage build）
+- [ ] 本地測試 `docker build` 成功
+- [ ] 設定 `application-prod.yaml`（環境變數化所有敏感設定）
 
-### 3. 資料庫索引優化
-**負責：** 後端
+### 2. GCP 環境設定
+**預計時間：** 1-2 小時
+- [ ] 建立 GCP 專案
+- [ ] 啟用 Cloud Run、Cloud SQL、Artifact Registry API
+- [ ] 建立 Cloud SQL PostgreSQL 實例
+- [ ] 設定 Upstash Redis（外部服務，免費）
+- [ ] 本地測試連接 Cloud SQL
+
+### 3. 前端部署設定
 **預計時間：** 30 分鐘
-**任務：**
-- [ ] Transaction.date 加入索引
-- [ ] 複合索引：user_id + date
+- [ ] 設定 `frontend/.env.production`（API URL 指向 Cloud Run）
+- [ ] Firebase Hosting 初始化（`firebase init hosting`）
 
-**SQL：**
-```java
-@Table(name = "transactions", indexes = {
-    @Index(name = "idx_transaction_date", columnList = "date"),
-    @Index(name = "idx_transaction_user_date", columnList = "user_id, date")
-})
-```
+### 4. GitHub Actions CI/CD
+**預計時間：** 1-2 小時
+- [ ] 撰寫 `.github/workflows/deploy-backend.yml`
+  - push main → build Docker → push Artifact Registry → deploy Cloud Run
+- [ ] 撰寫 `.github/workflows/deploy-frontend.yml`
+  - push main → npm build → deploy Firebase Hosting
+- [ ] 設定 GitHub Secrets（GCP 金鑰、各項環境變數）
 
 ---
 
-## 🟡 中優先級（Phase 7）
+## 🟡 部署後持續改進
 
 ### 4. Token 過期主動偵測
 **預計時間：** 30 分鐘
@@ -132,11 +126,14 @@
 - [x] 所有 CRUD 功能
 - [x] 前端基礎頁面
 
-### Phase 6 (部分)
+### Phase 6 ✅ 全部完成
 - [x] 資產管理頁面
 - [x] 統計分析圖表
 - [x] 價格警報頁面
 - [x] Dashboard 真實資料
+- [x] WebSocket 即時價格更新與警報通知
+- [x] 資產歷史快照頁面
+- [x] 資料庫複合索引優化
 
 ---
 
