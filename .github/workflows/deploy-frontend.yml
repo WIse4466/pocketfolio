@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+  workflow_dispatch:  # 允許在 GitHub Actions UI 手動觸發
 
 jobs:
   deploy:
