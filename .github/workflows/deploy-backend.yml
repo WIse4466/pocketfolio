@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+  workflow_dispatch:  # 允許在 GitHub Actions UI 手動觸發
 
 env:
   PROJECT_ID: pocketfolio-prod
