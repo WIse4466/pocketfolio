@@ -1,0 +1,73 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+env:
+  PROJECT_ID: pocketfolio-prod
+  REGION: asia-east1
+  SERVICE: pocketfolio-backend
+  IMAGE: asia-east1-docker.pkg.dev/pocketfolio-prod/pocketfolio-repo/backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-east1-docker.pkg.dev
+
+      - name: Build and push Docker image
+        run: |
+          docker build --platform linux/amd64 \
+            -t ${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.IMAGE }}:latest \
+            ./backend
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_SSL_ENABLED: ${{ secrets.REDIS_SSL_ENABLED }}
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.IMAGE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --add-cloudsql-instances=pocketfolio-prod:asia-east1:pocketfolio-db \
+            --service-account=github-actions-sa@pocketfolio-prod.iam.gserviceaccount.com \
+            --set-env-vars="^##^SPRING_PROFILES_ACTIVE=prod\
+          ##DB_USERNAME=${DB_USERNAME}\
+          ##DB_PASSWORD=${DB_PASSWORD}\
+          ##JWT_SECRET=${JWT_SECRET}\
+          ##REDIS_HOST=${REDIS_HOST}\
+          ##REDIS_PORT=${REDIS_PORT}\
+          ##REDIS_PASSWORD=${REDIS_PASSWORD}\
+          ##REDIS_SSL_ENABLED=${REDIS_SSL_ENABLED}"
+
+      - name: Show deployed URL
+        run: |
+          gcloud run services describe ${{ env.SERVICE }} \
+            --region=${{ env.REGION }} \
+            --format="value(status.url)"

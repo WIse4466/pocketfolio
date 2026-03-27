@@ -118,6 +118,13 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.8.4</version>
         </dependency>
+
+        <!-- Cloud SQL Auth Connector（Cloud Run → Cloud SQL Unix socket）-->
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.22.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>

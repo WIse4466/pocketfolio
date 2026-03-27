@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    # Cloud SQL Auth Connector 透過 Unix socket 連線，不需要 public IP
+    # 格式：jdbc:postgresql:///資料庫名?socketFactory=...&cloudSqlInstance=PROJECT:REGION:INSTANCE
+    url: jdbc:postgresql:///pocketfolio?socketFactory=com.google.cloud.sql.postgres.SocketFactory&cloudSqlInstance=pocketfolio-prod:asia-east1:pocketfolio-db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # 生產環境不自動改 schema，只驗證
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 60000ms
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+api:
+  coingecko:
+    base-url: https://api.coingecko.com/api/v3
+  yahoo-finance:
+    base-url: https://query1.finance.yahoo.com/v8/finance/chart
+
+scheduler:
+  price-update:
+    enabled: true
+    cron: "0 */5 * * * *"
+    initial-delay: 30000
+
+logging:
+  level:
+    root: WARN
+    com.pocketfolio: INFO
