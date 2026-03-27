@@ -1,5 +1,5 @@
 # ── Stage 1: Build ──────────────────────────────────────────────
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM mirror.gcr.io/library/eclipse-temurin:17-jdk-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY src/ src/
 RUN ./mvnw package -DskipTests -B
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM mirror.gcr.io/library/eclipse-temurin:17-jre-alpine AS runtime
 
 WORKDIR /app
 
