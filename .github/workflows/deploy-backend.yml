@@ -50,6 +50,22 @@ jobs:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           REDIS_SSL_ENABLED: ${{ secrets.REDIS_SSL_ENABLED }}
         run: |
+          # 用 Python 寫 env 檔，避免 shell 引號和空格問題
+          python3 -c "
+          import yaml, os
+          env = {
+              'SPRING_PROFILES_ACTIVE': 'prod',
+              'DB_USERNAME': os.environ['DB_USERNAME'],
+              'DB_PASSWORD': os.environ['DB_PASSWORD'],
+              'JWT_SECRET': os.environ['JWT_SECRET'],
+              'REDIS_HOST': os.environ['REDIS_HOST'],
+              'REDIS_PORT': os.environ['REDIS_PORT'],
+              'REDIS_PASSWORD': os.environ['REDIS_PASSWORD'],
+              'REDIS_SSL_ENABLED': os.environ['REDIS_SSL_ENABLED'],
+          }
+          print(yaml.dump(env, default_flow_style=False))
+          " > /tmp/env.yaml
+
           gcloud run deploy ${{ env.SERVICE }} \
             --image=${{ env.IMAGE }}:${{ github.sha }} \
             --region=${{ env.REGION }} \
@@ -57,14 +73,7 @@ jobs:
             --allow-unauthenticated \
             --add-cloudsql-instances=pocketfolio-prod:asia-east1:pocketfolio-db \
             --service-account=github-actions-sa@pocketfolio-prod.iam.gserviceaccount.com \
-            --set-env-vars="^##^SPRING_PROFILES_ACTIVE=prod\
-          ##DB_USERNAME=${DB_USERNAME}\
-          ##DB_PASSWORD=${DB_PASSWORD}\
-          ##JWT_SECRET=${JWT_SECRET}\
-          ##REDIS_HOST=${REDIS_HOST}\
-          ##REDIS_PORT=${REDIS_PORT}\
-          ##REDIS_PASSWORD=${REDIS_PASSWORD}\
-          ##REDIS_SSL_ENABLED=${REDIS_SSL_ENABLED}"
+            --env-vars-file=/tmp/env.yaml
 
       - name: Show deployed URL
         run: |

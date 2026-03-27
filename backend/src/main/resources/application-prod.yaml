@@ -9,7 +9,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate   # 生產環境不自動改 schema，只驗證
+      ddl-auto: update   # 第一次部署用 update 建立 schema，之後可換成 validate
     show-sql: false
 
   data:
