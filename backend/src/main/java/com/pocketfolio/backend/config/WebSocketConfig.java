@@ -35,8 +35,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
-                        "http://localhost:5173",  // Vite
-                        "http://localhost:3000"   // React
+                        "http://localhost:5173",                    // Vite
+                        "http://localhost:3000",                    // React
+                        "https://pocketfolio-prod.web.app",        // Firebase Hosting
+                        "https://pocketfolio-prod.firebaseapp.com" // Firebase Hosting (備用網域)
                 )
                 .withSockJS();  // 支援 SockJS（瀏覽器不支援 WebSocket 時的降級方案）
     }
