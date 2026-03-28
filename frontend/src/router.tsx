@@ -10,6 +10,7 @@ import AccountList from '@/pages/accounts/AccountList';
 import NotFound from '@/pages/NotFound';
 import AssetList from '@/pages/assets/AssetList';
 import AssetHistoryPage from '@/pages/assets/AssetHistoryPage';
+import StatisticsPage from '@/pages/statistics/StatisticsPage';
 
 // 受保護路由組件
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: 'history',
         element: <AssetHistoryPage />,
+      },
+      {
+        path: 'statistics',
+        element: <StatisticsPage />,
       },
     ],
   },
