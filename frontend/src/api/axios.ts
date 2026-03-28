@@ -1,5 +1,6 @@
-import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios, { type AxiosError, type AxiosResponse } from 'axios';
 import { message } from 'antd';
+import { useAuthStore } from '@/store/authStore';
 
 // 創建 Axios 實例
 const axiosInstance = axios.create({
@@ -40,11 +41,13 @@ axiosInstance.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // 未授權，清除 Token 並跳轉到登入頁
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          message.error('登入已過期，請重新登入');
-          window.location.href = '/login';
+          // 登入/註冊本身失敗不處理，讓各自頁面顯示錯誤
+          if (!error.config?.url?.includes('/auth/')) {
+            useAuthStore.getState().logout();
+            message.error('登入已過期，請重新登入');
+            // 使用 hard redirect 確保 React 記憶體狀態完全清除後再重新初始化
+            window.location.href = '/login';
+          }
           break;
         
         case 403:

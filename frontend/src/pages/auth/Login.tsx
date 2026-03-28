@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, message, Divider } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import { authApi } from '@/api/auth.api';
 import { useAuthStore } from '@/store/authStore';
 import type { LoginRequest } from '@/types/auth.types';
@@ -20,9 +21,12 @@ const Login = () => {
       login(response);
       message.success('登入成功！');
       navigate('/');
-    } catch (error: any) {
-      // 錯誤已在 axios 攔截器處理
-      console.error('登入失敗:', error);
+    } catch (error: unknown) {
+      let msg = '帳號或密碼錯誤';
+      if (axios.isAxiosError(error)) {
+        msg = error.response?.data?.message || msg;
+      }
+      message.error(msg);
     } finally {
       setLoading(false);
     }

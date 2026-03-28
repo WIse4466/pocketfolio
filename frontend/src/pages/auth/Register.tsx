@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, message, Divider } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import { authApi } from '@/api/auth.api';
 import { useAuthStore } from '@/store/authStore';
 import type { RegisterRequest } from '@/types/auth.types';
@@ -20,8 +21,12 @@ const Register = () => {
       login(response);
       message.success('註冊成功！');
       navigate('/');
-    } catch (error: any) {
-      console.error('註冊失敗:', error);
+    } catch (error: unknown) {
+      let msg = '註冊失敗，請稍後再試';
+      if (axios.isAxiosError(error)) {
+        msg = error.response?.data?.message || msg;
+      }
+      message.error(msg);
     } finally {
       setLoading(false);
     }
