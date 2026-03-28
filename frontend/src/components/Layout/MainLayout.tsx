@@ -75,7 +75,6 @@ const MainLayout = () => {
       icon: <LineChartOutlined />,
       label: '統計分析',
       onClick: () => navigate('/statistics'),
-      disabled: true, // Phase 6 實作
     },
   ];
 
