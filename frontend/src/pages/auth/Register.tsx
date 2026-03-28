@@ -21,7 +21,8 @@ const Register = () => {
       message.success('註冊成功！');
       navigate('/');
     } catch (error: any) {
-      console.error('註冊失敗:', error);
+      const msg = error?.response?.data?.message;
+      message.error(msg || '註冊失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
