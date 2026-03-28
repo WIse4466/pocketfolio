@@ -3,11 +3,12 @@ import { Card, Row, Col, Statistic, Typography, Spin, Alert, DatePicker, Table, 
 import { RiseOutlined, FallOutlined, SwapOutlined } from '@ant-design/icons';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import dayjs, { type Dayjs } from 'dayjs';
-import { statisticsApi, type MonthlyStatistics } from '@/api/statistics.api';
+import { statisticsApi, type MonthlyStatistics, type CategoryStat } from '@/api/statistics.api';
 
 const { Title } = Typography;
 
 const COLORS = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16'];
+
 
 const StatisticsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -32,17 +33,17 @@ const StatisticsPage = () => {
     fetchStats(selectedDate);
   }, [selectedDate]);
 
-  const expenseBreakdown = stats?.categoryBreakdown?.filter(c => c.categoryType === 'EXPENSE') ?? [];
-  const incomeBreakdown = stats?.categoryBreakdown?.filter(c => c.categoryType === 'INCOME') ?? [];
+  const expenseBreakdown = stats?.expenseByCategory ?? [];
+  const incomeBreakdown = stats?.incomeByCategory ?? [];
 
   const columns = [
     { title: '類別', dataIndex: 'categoryName', key: 'categoryName' },
     {
       title: '金額',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
+      dataIndex: 'amount',
+      key: 'amount',
       render: (v: number) => `$${v.toLocaleString()}`,
-      sorter: (a: any, b: any) => b.totalAmount - a.totalAmount,
+      sorter: (a: CategoryStat, b: CategoryStat) => b.amount - a.amount,
     },
     {
       title: '佔比',
@@ -50,7 +51,6 @@ const StatisticsPage = () => {
       key: 'percentage',
       render: (v: number) => `${v.toFixed(1)}%`,
     },
-    { title: '筆數', dataIndex: 'transactionCount', key: 'transactionCount' },
   ];
 
   return (
@@ -122,12 +122,12 @@ const StatisticsPage = () => {
                     <PieChart>
                       <Pie
                         data={expenseBreakdown}
-                        dataKey="totalAmount"
+                        dataKey="amount"
                         nameKey="categoryName"
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={({ categoryName, percentage }: any) => `${categoryName} ${Number(percentage).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
                         {expenseBreakdown.map((_, i) => (
@@ -144,7 +144,7 @@ const StatisticsPage = () => {
                   <Table
                     dataSource={expenseBreakdown}
                     columns={columns}
-                    rowKey="categoryId"
+                    rowKey="categoryName"
                     pagination={false}
                     size="small"
                   />
@@ -162,12 +162,12 @@ const StatisticsPage = () => {
                     <PieChart>
                       <Pie
                         data={incomeBreakdown}
-                        dataKey="totalAmount"
+                        dataKey="amount"
                         nameKey="categoryName"
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={({ categoryName, percentage }: any) => `${categoryName} ${Number(percentage).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
                         {incomeBreakdown.map((_, i) => (
@@ -185,7 +185,7 @@ const StatisticsPage = () => {
                   <Table
                     dataSource={incomeBreakdown}
                     columns={columns}
-                    rowKey="categoryId"
+                    rowKey="categoryName"
                     pagination={false}
                     size="small"
                   />
@@ -194,7 +194,7 @@ const StatisticsPage = () => {
             </Row>
           )}
 
-          {expenseBreakdown.length === 0 && incomeBreakdown.length === 0 && (
+          {(stats?.totalIncome === 0 && stats?.totalExpense === 0) && (
             <Card style={{ marginTop: 16, textAlign: 'center', color: '#999' }}>
               本月尚無交易記錄
             </Card>

@@ -1,20 +1,19 @@
 import axios from './axios';
 
+export interface CategoryStat {
+  categoryName: string;
+  amount: number;
+  percentage: number;
+}
+
 export interface MonthlyStatistics {
   year: number;
   month: number;
   totalIncome: number;
   totalExpense: number;
   netAmount: number;
-  transactionCount: number;
-  categoryBreakdown: {
-    categoryId: string;
-    categoryName: string;
-    categoryType: 'INCOME' | 'EXPENSE';
-    totalAmount: number;
-    transactionCount: number;
-    percentage: number;
-  }[];
+  incomeByCategory: CategoryStat[];
+  expenseByCategory: CategoryStat[];
 }
 
 export interface AccountBalance {

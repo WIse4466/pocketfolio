@@ -20,21 +20,21 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const now = new Date();
-        const [stats, balances, accounts] = await Promise.all([
-          statisticsApi.getMonthlyStatistics(now.getFullYear(), now.getMonth() + 1),
-          statisticsApi.getAccountBalances(),
-          accountApi.getAccounts(),
-        ]);
-        setMonthlyStats(stats);
-        setAccountBalances(balances);
-        setAccountCount(accounts.length);
-      } catch {
-        setError('載入資料失敗，請重新整理');
-      } finally {
-        setLoading(false);
-      }
+      const now = new Date();
+      const [statsResult, balancesResult, accountsResult] = await Promise.allSettled([
+        statisticsApi.getMonthlyStatistics(now.getFullYear(), now.getMonth() + 1),
+        statisticsApi.getAccountBalances(),
+        accountApi.getAccounts(),
+      ]);
+
+      if (statsResult.status === 'fulfilled') setMonthlyStats(statsResult.value);
+      if (balancesResult.status === 'fulfilled') setAccountBalances(balancesResult.value);
+      if (accountsResult.status === 'fulfilled') setAccountCount(accountsResult.value.length);
+
+      const allFailed = [statsResult, balancesResult, accountsResult].every(r => r.status === 'rejected');
+      if (allFailed) setError('載入資料失敗，請重新整理');
+
+      setLoading(false);
     };
 
     fetchData();
