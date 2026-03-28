@@ -42,9 +42,10 @@ axiosInstance.interceptors.response.use(
       switch (status) {
         case 401:
           // 登入/註冊本身失敗不處理，讓各自頁面顯示錯誤
-          if (!error.config?.url?.startsWith('/auth/')) {
+          if (!error.config?.url?.includes('/auth/')) {
             useAuthStore.getState().logout();
             message.error('登入已過期，請重新登入');
+            // 使用 hard redirect 確保 React 記憶體狀態完全清除後再重新初始化
             window.location.href = '/login';
           }
           break;
