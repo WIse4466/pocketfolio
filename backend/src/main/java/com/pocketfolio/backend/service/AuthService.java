@@ -3,7 +3,13 @@ package com.pocketfolio.backend.service;
 import com.pocketfolio.backend.dto.AuthResponse;
 import com.pocketfolio.backend.dto.LoginRequest;
 import com.pocketfolio.backend.dto.RegisterRequest;
+import com.pocketfolio.backend.entity.Account;
+import com.pocketfolio.backend.entity.AccountType;
+import com.pocketfolio.backend.entity.Category;
+import com.pocketfolio.backend.entity.CategoryType;
 import com.pocketfolio.backend.entity.User;
+import com.pocketfolio.backend.repository.AccountRepository;
+import com.pocketfolio.backend.repository.CategoryRepository;
 import com.pocketfolio.backend.repository.UserRepository;
 import com.pocketfolio.backend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +19,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -46,6 +56,45 @@ public class AuthService {
         user.setCreatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
+
+        // 建立預設類別
+        List<String> expenseNames = List.of("餐飲", "交通", "娛樂", "購物", "住房", "醫療", "教育");
+        List<String> incomeNames = List.of("薪資", "獎金", "投資收益", "其他收入");
+        List<Category> defaultCategories = new java.util.ArrayList<>();
+        for (String name : expenseNames) {
+            Category c = new Category();
+            c.setName(name);
+            c.setType(CategoryType.EXPENSE);
+            c.setUser(savedUser);
+            defaultCategories.add(c);
+        }
+        for (String name : incomeNames) {
+            Category c = new Category();
+            c.setName(name);
+            c.setType(CategoryType.INCOME);
+            c.setUser(savedUser);
+            defaultCategories.add(c);
+        }
+        categoryRepository.saveAll(defaultCategories);
+
+        // 建立預設帳戶
+        record DefaultAccount(String name, AccountType type) {}
+        List<DefaultAccount> defaultAccountDefs = List.of(
+                new DefaultAccount("現金", AccountType.CASH),
+                new DefaultAccount("銀行帳戶", AccountType.BANK),
+                new DefaultAccount("信用卡", AccountType.CREDIT_CARD),
+                new DefaultAccount("投資帳戶", AccountType.INVESTMENT)
+        );
+        List<Account> defaultAccounts = new java.util.ArrayList<>();
+        for (DefaultAccount def : defaultAccountDefs) {
+            Account a = new Account();
+            a.setName(def.name());
+            a.setType(def.type());
+            a.setInitialBalance(BigDecimal.ZERO);
+            a.setUser(savedUser);
+            defaultAccounts.add(a);
+        }
+        accountRepository.saveAll(defaultAccounts);
 
         // 產生 JWT Token
         String token = jwtUtil.generateToken(savedUser);
