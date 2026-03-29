@@ -25,14 +25,14 @@ public class KnownAsset {
 
     // Yahoo Finance / CoinGecko API 相容代號
     // 台股上市：2330.TW，上櫃：6547.TWO，加密：bitcoin（CoinGecko id）
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(nullable = false, unique = true, length = 100)
     private String symbol;
 
     // 顯示名稱：台積電、Bitcoin
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 200)
     private String name;
 
     // 用戶看到的短代碼：2330、BTC（搜尋用）
-    @Column(name = "display_code", nullable = false, length = 20)
+    @Column(name = "display_code", nullable = false, length = 50)
     private String displayCode;
 }
