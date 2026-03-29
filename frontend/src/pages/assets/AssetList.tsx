@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Table,
   Button,
   Space,
   Modal,
   Form,
-  Input,
   InputNumber,
   Select,
+  AutoComplete,
   message,
   Popconfirm,
   Tag,
@@ -33,6 +33,7 @@ import dayjs from 'dayjs';
 import { assetApi } from '@/api/asset.api';
 import { accountApi } from '@/api/account.api';
 import { priceApi } from '@/api/price.api';
+import { knownAssetApi, type KnownAssetResult, type KnownAssetType } from '@/api/knownAsset.api';
 import { useWebSocketStore } from '@/store/websocketStore';
 import type { Asset, AssetRequest, AssetType } from '@/types/asset.types';
 import type { Account } from '@/types/account.types';
@@ -51,6 +52,42 @@ const AssetList = () => {
   const [updating, setUpdating] = useState(false);
   const [form] = Form.useForm();
   const { lastPriceUpdateAt } = useWebSocketStore();
+
+  // AutoComplete 狀態
+  // searchMarket 控制搜哪個清單（STOCK_TW / STOCK_TWO / CRYPTO），與送出的 type 欄位（STOCK / CRYPTO）分開
+  const [searchMarket, setSearchMarket] = useState<KnownAssetType>('STOCK_TW');
+  const [searchOptions, setSearchOptions] = useState<{ value: string; label: string; data: KnownAssetResult }[]>([]);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAssetSearch = useCallback((keyword: string) => {
+    if (keyword.length < 1) {
+      setSearchOptions([]);
+      return;
+    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        const results = await knownAssetApi.search(searchMarket, keyword);
+        setSearchOptions(
+          results.map((r) => ({
+            value: r.symbol,
+            label: `${r.displayCode}　${r.name}`,
+            data: r,
+          }))
+        );
+      } catch {
+        // 搜尋失敗靜默忽略
+      }
+    }, 300);
+  }, [searchMarket]);
+
+  const handleAssetSelect = useCallback((_value: string, option: { value: string; label: string; data: KnownAssetResult }) => {
+    form.setFieldsValue({
+      symbol: option.data.symbol,
+      name: option.data.name,
+    });
+    setSearchOptions([]);
+  }, [form]);
 
   // 載入資料
   useEffect(() => {
@@ -100,14 +137,20 @@ const AssetList = () => {
   const handleCreate = () => {
     setEditingAsset(null);
     form.resetFields();
-    form.setFieldsValue({ accountId: selectedAccount });
+    form.setFieldsValue({ accountId: selectedAccount, type: 'STOCK', _searchMarket: 'STOCK_TW' });
+
+    setSearchMarket('STOCK_TW');
+    setSearchOptions([]);
     setModalVisible(true);
   };
 
   // 編輯資產
   const handleEdit = (record: Asset) => {
     setEditingAsset(record);
-    form.setFieldsValue(record);
+    const market: KnownAssetType = record.type === 'CRYPTO' ? 'CRYPTO' : 'STOCK_TW';
+    form.setFieldsValue({ ...record, _searchMarket: market });
+    setSearchMarket(market);
+    setSearchOptions([]);
     setModalVisible(true);
   };
 
@@ -433,34 +476,53 @@ const AssetList = () => {
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item name="accountId" hidden>
-            <Input />
+            <AutoComplete />
           </Form.Item>
+          {/* symbol / name 由 AutoComplete 選取後自動填入，用 hidden field 傳值 */}
+          <Form.Item name="symbol" hidden><AutoComplete /></Form.Item>
+          <Form.Item name="name" hidden><AutoComplete /></Form.Item>
+
+          {/* type 送後端（STOCK / CRYPTO），由 _searchMarket 選擇決定 */}
+          <Form.Item name="type" hidden><AutoComplete /></Form.Item>
 
           <Form.Item
             label="資產類型"
-            name="type"
+            name="_searchMarket"
             rules={[{ required: true, message: '請選擇資產類型' }]}
           >
-            <Radio.Group>
-              <Radio value="STOCK">股票</Radio>
+            <Radio.Group onChange={(e) => {
+              const market: KnownAssetType = e.target.value;
+              form.setFieldsValue({
+                type: market === 'CRYPTO' ? 'CRYPTO' : 'STOCK',
+                symbol: undefined,
+                name: undefined,
+              });
+              setSearchMarket(market);
+              setSearchOptions([]);
+            }}>
+              <Radio value="STOCK_TW">台股（上市）</Radio>
+              <Radio value="STOCK_TWO">台股（上櫃）</Radio>
               <Radio value="CRYPTO">加密貨幣</Radio>
             </Radio.Group>
           </Form.Item>
 
           <Form.Item
-            label="資產代號"
-            name="symbol"
-            rules={[{ required: true, message: '請輸入資產代號' }]}
+            label="搜尋資產"
+            name="_assetSearch"
+            rules={[{ validator: async () => {
+              if (!form.getFieldValue('symbol')) throw new Error('請選擇一個資產');
+            }}]}
           >
-            <Input placeholder="例如：AAPL, BTC" />
-          </Form.Item>
-
-          <Form.Item
-            label="資產名稱"
-            name="name"
-            rules={[{ required: true, message: '請輸入資產名稱' }]}
-          >
-            <Input placeholder="例如：蘋果公司, 比特幣" />
+            <AutoComplete
+              options={searchOptions}
+              onSearch={handleAssetSearch}
+              onSelect={handleAssetSelect}
+              placeholder={searchMarket === 'CRYPTO' ? '輸入名稱或代碼，例如：BTC、bitcoin' : '輸入股票代號或名稱，例如：2330、台積電'}
+              allowClear
+              onClear={() => {
+                form.setFieldsValue({ symbol: undefined, name: undefined });
+              }}
+            />
           </Form.Item>
 
           <Form.Item
