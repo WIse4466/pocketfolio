@@ -23,13 +23,19 @@ public class KnownAssetSyncScheduler {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void initOnStartup() {
-        long count = knownAssetRepository.count();
-        if (count > 0) {
-            log.info("known_assets 表已有 {} 筆資料，跳過啟動初始化同步", count);
-            return;
+        // 分別檢查每個類型，確保各類型都有資料（避免部分同步後重啟跳過剩餘類型）
+        if (knownAssetRepository.countByAssetType("STOCK_TW") == 0) {
+            log.info("STOCK_TW 為空，執行同步...");
+            syncService.syncTwse();
         }
-        log.info("known_assets 表為空，執行首次同步...");
-        syncService.syncAll();
+        if (knownAssetRepository.countByAssetType("STOCK_TWO") == 0) {
+            log.info("STOCK_TWO 為空，執行同步...");
+            syncService.syncTpex();
+        }
+        if (knownAssetRepository.countByAssetType("CRYPTO") == 0) {
+            log.info("CRYPTO 為空，執行同步...");
+            syncService.syncCrypto();
+        }
     }
 
     /**
