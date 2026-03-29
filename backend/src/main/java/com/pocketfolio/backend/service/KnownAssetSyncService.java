@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
@@ -123,7 +124,13 @@ public class KnownAssetSyncService {
     public int syncCrypto() {
         log.info("開始同步 CoinGecko 加密貨幣清單...");
         try {
-            List<CoinGeckoListItem> items = webClientBuilder.baseUrl(coinGeckoBaseUrl).build()
+            // CoinGecko /coins/list 回應約 1MB，超過 WebClient 預設 256KB buffer，需明確指定上限
+            ExchangeStrategies strategies = ExchangeStrategies.builder()
+                    .codecs(config -> config.defaultCodecs().maxInMemorySize(5 * 1024 * 1024)) // 5MB
+                    .build();
+            List<CoinGeckoListItem> items = webClientBuilder.baseUrl(coinGeckoBaseUrl)
+                    .exchangeStrategies(strategies)
+                    .build()
                     .get().uri("/coins/list")
                     .retrieve()
                     .bodyToFlux(CoinGeckoListItem.class)
