@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,7 +32,7 @@ public class KnownAssetController {
             @RequestParam String assetType,
             @RequestParam String keyword) {
 
-        return knownAssetRepository.searchByKeyword(assetType, keyword)
+        return knownAssetRepository.searchByKeyword(assetType, keyword, PageRequest.of(0, 20))
                 .stream()
                 .map(KnownAssetResponse::from)
                 .toList();
