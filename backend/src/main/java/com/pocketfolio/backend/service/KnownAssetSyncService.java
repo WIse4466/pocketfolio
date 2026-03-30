@@ -1,0 +1,189 @@
+package com.pocketfolio.backend.service;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pocketfolio.backend.entity.KnownAsset;
+import com.pocketfolio.backend.repository.KnownAssetRepository;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class KnownAssetSyncService {
+
+    private final KnownAssetRepository knownAssetRepository;
+    private final WebClient.Builder webClientBuilder;
+
+    @Value("${api.coingecko.base-url}")
+    private String coinGeckoBaseUrl;
+
+    private static final String TWSE_URL =
+            "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL";
+    private static final String TPEX_URL =
+            "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes";
+
+    // 最低合理筆數（低於此值視為 API 異常，拒絕寫入）
+    private static final int TWSE_MIN_COUNT = 500;
+    private static final int TPEX_MIN_COUNT = 400;
+    private static final int CRYPTO_MIN_COUNT = 150;
+
+    // ────────────── TWSE 上市（含 ETF） ──────────────
+
+    // 網路或 API 例外時自動重試（2s → 4s → 8s）；sanity check 回傳 0 不觸發 retry
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
+    @Transactional
+    public int syncTwse() {
+        log.info("開始同步 TWSE 上市股票與 ETF...");
+        List<TwseItem> items = webClientBuilder.build()
+                .get().uri(TWSE_URL)
+                .retrieve()
+                .bodyToFlux(TwseItem.class)
+                .collectList()
+                .block();
+
+        if (items == null || items.size() < TWSE_MIN_COUNT) {
+            log.warn("TWSE 回傳資料量異常（{}筆），跳過本次同步", items == null ? 0 : items.size());
+            return 0;
+        }
+
+        List<KnownAsset> toSave = new ArrayList<>();
+        for (TwseItem item : items) {
+            if (item.getCode() == null || item.getName() == null) continue;
+            KnownAsset ka = new KnownAsset();
+            ka.setAssetType("STOCK_TW");
+            ka.setSymbol(item.getCode() + ".TW");
+            ka.setDisplayCode(item.getCode());
+            ka.setName(item.getName());
+            toSave.add(ka);
+        }
+
+        // delete + saveAll 在同一個 @Transactional，任一失敗則全部 rollback
+        knownAssetRepository.deleteByAssetType("STOCK_TW");
+        knownAssetRepository.saveAll(toSave);
+        log.info("TWSE 同步完成：{} 筆", toSave.size());
+        return toSave.size();
+    }
+
+    // ────────────── TPEX 上櫃（含 ETF） ──────────────
+
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
+    @Transactional
+    public int syncTpex() {
+        log.info("開始同步 TPEX 上櫃股票與 ETF...");
+        List<TpexItem> items = webClientBuilder.build()
+                .get().uri(TPEX_URL)
+                .retrieve()
+                .bodyToFlux(TpexItem.class)
+                .collectList()
+                .block();
+
+        if (items == null || items.size() < TPEX_MIN_COUNT) {
+            log.warn("TPEX 回傳資料量異常（{}筆），跳過本次同步", items == null ? 0 : items.size());
+            return 0;
+        }
+
+        List<KnownAsset> toSave = new ArrayList<>();
+        for (TpexItem item : items) {
+            if (item.getCode() == null || item.getName() == null) continue;
+            KnownAsset ka = new KnownAsset();
+            ka.setAssetType("STOCK_TWO");
+            ka.setSymbol(item.getCode() + ".TWO");
+            ka.setDisplayCode(item.getCode());
+            ka.setName(item.getName());
+            toSave.add(ka);
+        }
+
+        knownAssetRepository.deleteByAssetType("STOCK_TWO");
+        knownAssetRepository.saveAll(toSave);
+        log.info("TPEX 同步完成：{} 筆", toSave.size());
+        return toSave.size();
+    }
+
+    // ────────────── CoinGecko 加密貨幣 ──────────────
+
+    /**
+     * 從 /coins/markets 抓市值前 200 名的加密貨幣。
+     * 只同步有實際交易的主流幣，避免廢棄幣污染搜尋結果。
+     */
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
+    @Transactional
+    public int syncCrypto() {
+        log.info("開始同步 CoinGecko 市值前 200 加密貨幣...");
+
+        List<CoinGeckoMarketItem> items = webClientBuilder.baseUrl(coinGeckoBaseUrl).build()
+                .get()
+                .uri(u -> u.path("/coins/markets")
+                        .queryParam("vs_currency", "usd")
+                        .queryParam("order", "market_cap_desc")
+                        .queryParam("per_page", 200)
+                        .queryParam("page", 1)
+                        .build())
+                .retrieve()
+                .bodyToFlux(CoinGeckoMarketItem.class)
+                .collectList()
+                .block();
+
+        if (items == null || items.size() < CRYPTO_MIN_COUNT) {
+            log.warn("CoinGecko 回傳資料量異常（{}筆），跳過本次同步", items == null ? 0 : items.size());
+            return 0;
+        }
+
+        List<KnownAsset> toSave = new ArrayList<>();
+        for (CoinGeckoMarketItem item : items) {
+            if (item.getId() == null || item.getSymbol() == null || item.getName() == null) continue;
+            KnownAsset ka = new KnownAsset();
+            ka.setAssetType("CRYPTO");
+            ka.setSymbol(item.getId());                         // CoinGecko id，例如 "bitcoin"
+            ka.setDisplayCode(item.getSymbol().toUpperCase());  // 例如 "BTC"
+            ka.setName(item.getName());                         // 例如 "Bitcoin"
+            ka.setMarketCapRank(item.getMarketCapRank());
+            toSave.add(ka);
+        }
+
+        knownAssetRepository.deleteByAssetType("CRYPTO");
+        knownAssetRepository.saveAll(toSave);
+        log.info("CoinGecko 同步完成：{} 筆", toSave.size());
+        return toSave.size();
+    }
+
+    // ────────────── 內部 DTO ──────────────
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class TwseItem {
+        @JsonProperty("Code")
+        private String code;
+        @JsonProperty("Name")
+        private String name;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class TpexItem {
+        @JsonProperty("SecuritiesCompanyCode")
+        private String code;
+        @JsonProperty("CompanyName")
+        private String name;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class CoinGeckoMarketItem {
+        private String id;
+        private String symbol;
+        private String name;
+        @JsonProperty("market_cap_rank")
+        private Integer marketCapRank;
+    }
+}

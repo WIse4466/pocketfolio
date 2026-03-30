@@ -11,8 +11,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,45 +22,26 @@ public class CoinGeckoService {
     @Value("${api.coingecko.base-url}")
     private String baseUrl;
 
-    // Symbol 映射表（CoinGecko 使用的 ID）
-    private static final Map<String, String> SYMBOL_TO_ID = new HashMap<>() {{
-        put("BTC", "bitcoin");
-        put("ETH", "ethereum");
-        put("BNB", "binancecoin");
-        put("XRP", "ripple");
-        put("ADA", "cardano");
-        put("SOL", "solana");
-        put("DOGE", "dogecoin");
-        put("MATIC", "matic-network");
-        // 可以繼續新增更多
-    }};
-
     /**
      * 取得加密貨幣即時價格（USD）
      *
-     * @param symbol 代號，例如：BTC, ETH
+     * @param coinGeckoId CoinGecko coin id，例如：bitcoin, ethereum（存在 Asset.symbol 欄位）
      * @return 價格（USD）
      */
     @Cacheable(
             value = "prices",
-            key = "'crypto:' + #symbol.toUpperCase()",
+            key = "'crypto:' + #coinGeckoId.toLowerCase()",
             unless = "#result == null"
     )
-    public PriceData getPrice(String symbol) {
-        String coinId = SYMBOL_TO_ID.get(symbol.toUpperCase());
-
-        if (coinId == null) {
-            log.warn("不支援的加密貨幣代號: {}", symbol);
-            return null;
-        }
-
+    public PriceData getPrice(String coinGeckoId) {
         try {
-            log.info("呼叫 CoinGecko API: {}", symbol);
+            String id = coinGeckoId.toLowerCase();
+            log.info("呼叫 CoinGecko API: {}", id);
 
             WebClient webClient = webClientBuilder.baseUrl(baseUrl).build();
 
             CoinGeckoResponse response = webClient.get()
-                    .uri("/coins/{id}", coinId)
+                    .uri("/coins/{id}", id)
                     .retrieve()
                     .bodyToMono(CoinGeckoResponse.class)
                     .block();
@@ -70,28 +49,21 @@ public class CoinGeckoService {
             if (response != null && response.getMarketData() != null) {
                 Thread.sleep(500);
                 BigDecimal price = response.getMarketData().getUsdPrice();
-                log.info("CoinGecko - {} 價格: ${}", symbol, price);
+                log.info("CoinGecko - {} 價格: ${}", coinGeckoId, price);
                 return PriceData.builder()
-                        .symbol(symbol)
+                        .symbol(id)
                         .price(price)
                         .updateTime(LocalDateTime.now())
                         .source("CoinGecko")
                         .build();
             }
 
-            log.warn("CoinGecko - 無法取得 {} 的價格", symbol);
+            log.warn("CoinGecko - 無法取得 {} 的價格", id);
             return null;
 
         } catch (Exception e) {
             log.error("CoinGecko API 呼叫失敗: {}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 檢查是否支援該加密貨幣
-     */
-    public boolean isSupported(String symbol) {
-        return SYMBOL_TO_ID.containsKey(symbol.toUpperCase());
     }
 }
