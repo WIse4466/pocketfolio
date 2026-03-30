@@ -12,6 +12,7 @@ public class KnownAssetResponse {
     private String name;
     private String displayCode;
     private String assetType;
+    private Integer marketCapRank;
 
     public static KnownAssetResponse from(KnownAsset ka) {
         return KnownAssetResponse.builder()
@@ -19,6 +20,7 @@ public class KnownAssetResponse {
                 .name(ka.getName())
                 .displayCode(ka.getDisplayCode())
                 .assetType(ka.getAssetType())
+                .marketCapRank(ka.getMarketCapRank())
                 .build();
     }
 }

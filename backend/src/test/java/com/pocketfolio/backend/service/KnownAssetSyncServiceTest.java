@@ -100,6 +100,38 @@ class KnownAssetSyncServiceTest {
         }
     }
 
+    // ────────────── CoinGecko Sanity Check ──────────────
+
+    @Nested
+    @DisplayName("syncCrypto()")
+    class SyncCrypto {
+
+        @Test
+        @DisplayName("API 回傳筆數低於閾值（150）時，不清除舊資料")
+        void sanityCheck_skipsWhenTooFewItems() {
+            given(responseSpec.bodyToFlux(KnownAssetSyncService.CoinGeckoMarketItem.class))
+                    .willReturn(Flux.just(marketItem("bitcoin", "BTC", "Bitcoin", 1)));
+
+            int result = syncService.syncCrypto();
+
+            assertThat(result).isEqualTo(0);
+            verify(knownAssetRepository, never()).deleteByAssetType("CRYPTO");
+            verify(knownAssetRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("API 回傳空串列時，不清除舊資料")
+        void sanityCheck_skipsWhenEmpty() {
+            given(responseSpec.bodyToFlux(KnownAssetSyncService.CoinGeckoMarketItem.class))
+                    .willReturn(Flux.empty());
+
+            int result = syncService.syncCrypto();
+
+            assertThat(result).isEqualTo(0);
+            verify(knownAssetRepository, never()).deleteByAssetType("CRYPTO");
+        }
+    }
+
     // ────────────── Helper methods ──────────────
 
     private KnownAssetSyncService.TwseItem twseItem(String code) {
@@ -113,6 +145,15 @@ class KnownAssetSyncServiceTest {
         KnownAssetSyncService.TpexItem item = new KnownAssetSyncService.TpexItem();
         item.setCode(code);
         item.setName("公司" + code);
+        return item;
+    }
+
+    private KnownAssetSyncService.CoinGeckoMarketItem marketItem(String id, String symbol, String name, int rank) {
+        KnownAssetSyncService.CoinGeckoMarketItem item = new KnownAssetSyncService.CoinGeckoMarketItem();
+        item.setId(id);
+        item.setSymbol(symbol);
+        item.setName(name);
+        item.setMarketCapRank(rank);
         return item;
     }
 }

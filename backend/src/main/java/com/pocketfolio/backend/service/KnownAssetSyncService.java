@@ -12,7 +12,6 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
@@ -37,7 +36,7 @@ public class KnownAssetSyncService {
     // 最低合理筆數（低於此值視為 API 異常，拒絕寫入）
     private static final int TWSE_MIN_COUNT = 500;
     private static final int TPEX_MIN_COUNT = 400;
-    private static final int CRYPTO_MIN_COUNT = 5000;
+    private static final int CRYPTO_MIN_COUNT = 150;
 
     // ────────────── TWSE 上市（含 ETF） ──────────────
 
@@ -114,60 +113,24 @@ public class KnownAssetSyncService {
     // ────────────── CoinGecko 加密貨幣 ──────────────
 
     /**
-     * 從 /coins/markets 抓前 1000 名的市值排名（每頁 250 筆，共 4 頁）。
-     * 免費 API rate limit 約 30 req/min，4 頁之間各 sleep 2s。
+     * 從 /coins/markets 抓市值前 200 名的加密貨幣。
+     * 只同步有實際交易的主流幣，避免廢棄幣污染搜尋結果。
      */
-    private java.util.Map<String, Integer> fetchMarketCapRanks() {
-        java.util.Map<String, Integer> rankMap = new java.util.HashMap<>();
-        WebClient client = webClientBuilder.baseUrl(coinGeckoBaseUrl).build();
-        for (int page = 1; page <= 4; page++) {
-            try {
-                int p = page;
-                List<CoinGeckoMarketItem> pageItems = client.get()
-                        .uri(u -> u.path("/coins/markets")
-                                .queryParam("vs_currency", "usd")
-                                .queryParam("order", "market_cap_desc")
-                                .queryParam("per_page", 250)
-                                .queryParam("page", p)
-                                .build())
-                        .retrieve()
-                        .bodyToFlux(CoinGeckoMarketItem.class)
-                        .collectList()
-                        .block();
-                if (pageItems != null) {
-                    pageItems.forEach(item -> {
-                        if (item.getId() != null && item.getMarketCapRank() != null) {
-                            rankMap.put(item.getId(), item.getMarketCapRank());
-                        }
-                    });
-                }
-                if (page < 4) Thread.sleep(2000); // 避免 rate limit
-            } catch (Exception e) {
-                log.warn("fetchMarketCapRanks page {} 失敗，繼續其餘頁: {}", page, e.getMessage());
-            }
-        }
-        log.info("市值排名同步完成：{} 筆", rankMap.size());
-        return rankMap;
-    }
-
     @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
     @Transactional
     public int syncCrypto() {
-        log.info("開始同步 CoinGecko 加密貨幣清單...");
+        log.info("開始同步 CoinGecko 市值前 200 加密貨幣...");
 
-        // 先取得前 1000 名市值排名
-        java.util.Map<String, Integer> rankMap = fetchMarketCapRanks();
-
-        // CoinGecko /coins/list 回應約 1MB，超過 WebClient 預設 256KB buffer，需明確指定上限
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(config -> config.defaultCodecs().maxInMemorySize(5 * 1024 * 1024)) // 5MB
-                .build();
-        List<CoinGeckoListItem> items = webClientBuilder.baseUrl(coinGeckoBaseUrl)
-                .exchangeStrategies(strategies)
-                .build()
-                .get().uri("/coins/list")
+        List<CoinGeckoMarketItem> items = webClientBuilder.baseUrl(coinGeckoBaseUrl).build()
+                .get()
+                .uri(u -> u.path("/coins/markets")
+                        .queryParam("vs_currency", "usd")
+                        .queryParam("order", "market_cap_desc")
+                        .queryParam("per_page", 200)
+                        .queryParam("page", 1)
+                        .build())
                 .retrieve()
-                .bodyToFlux(CoinGeckoListItem.class)
+                .bodyToFlux(CoinGeckoMarketItem.class)
                 .collectList()
                 .block();
 
@@ -177,14 +140,14 @@ public class KnownAssetSyncService {
         }
 
         List<KnownAsset> toSave = new ArrayList<>();
-        for (CoinGeckoListItem item : items) {
+        for (CoinGeckoMarketItem item : items) {
             if (item.getId() == null || item.getSymbol() == null || item.getName() == null) continue;
             KnownAsset ka = new KnownAsset();
             ka.setAssetType("CRYPTO");
             ka.setSymbol(item.getId());                         // CoinGecko id，例如 "bitcoin"
             ka.setDisplayCode(item.getSymbol().toUpperCase());  // 例如 "BTC"
             ka.setName(item.getName());                         // 例如 "Bitcoin"
-            ka.setMarketCapRank(rankMap.get(item.getId()));     // 前 1000 名有值，其餘 null
+            ka.setMarketCapRank(item.getMarketCapRank());
             toSave.add(ka);
         }
 
@@ -216,16 +179,10 @@ public class KnownAssetSyncService {
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    static class CoinGeckoListItem {
+    static class CoinGeckoMarketItem {
         private String id;
         private String symbol;
         private String name;
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class CoinGeckoMarketItem {
-        private String id;
         @JsonProperty("market_cap_rank")
         private Integer marketCapRank;
     }

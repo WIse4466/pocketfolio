@@ -71,7 +71,9 @@ const AssetList = () => {
         setSearchOptions(
           results.map((r) => ({
             value: r.symbol,
-            label: `${r.displayCode}　${r.name}`,
+            label: r.marketCapRank
+              ? `${r.displayCode}　${r.name}　#${r.marketCapRank}`
+              : `${r.displayCode}　${r.name}`,
             data: r,
           }))
         );
@@ -168,9 +170,13 @@ const AssetList = () => {
   // 更新單個資產價格
   const handleUpdatePrice = async (id: string) => {
     try {
-      await priceApi.updateAssetPrice(id);
-      message.success('價格更新成功');
-      loadAssets();
+      const result = await priceApi.updateAssetPrice(id);
+      if (result.success) {
+        message.success('價格更新成功');
+        loadAssets();
+      } else {
+        message.error(`價格更新失敗：${result.errorMessage ?? '無法取得最新價格'}`);
+      }
     } catch (error) {
       message.error('價格更新失敗');
     }
@@ -180,8 +186,9 @@ const AssetList = () => {
   const handleUpdateAllPrices = async () => {
     setUpdating(true);
     try {
-      const result = await priceApi.updateMyAssetPrices();
-      message.success(`成功更新 ${result.successCount} 個資產價格`);
+      const results = await priceApi.updateMyAssetPrices();
+      const successCount = results.filter((r) => r.success).length;
+      message.success(`成功更新 ${successCount} 個資產價格`);
       loadAssets();
     } catch (error) {
       message.error('批次更新失敗');

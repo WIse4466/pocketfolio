@@ -34,8 +34,8 @@ export const priceApi = {
   },
 
   // 批次更新我的資產價格
-  updateMyAssetPrices: async (): Promise<{ successCount: number }> => {
-    const response = await axios.post('/prices/update/my-assets');
+  updateMyAssetPrices: async (): Promise<PriceUpdateResponse[]> => {
+    const response = await axios.post<PriceUpdateResponse[]>('/prices/update/my-assets');
     return response.data;
   },
 

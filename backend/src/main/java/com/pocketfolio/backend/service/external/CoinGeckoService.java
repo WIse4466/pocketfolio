@@ -35,12 +35,13 @@ public class CoinGeckoService {
     )
     public PriceData getPrice(String coinGeckoId) {
         try {
-            log.info("呼叫 CoinGecko API: {}", coinGeckoId);
+            String id = coinGeckoId.toLowerCase();
+            log.info("呼叫 CoinGecko API: {}", id);
 
             WebClient webClient = webClientBuilder.baseUrl(baseUrl).build();
 
             CoinGeckoResponse response = webClient.get()
-                    .uri("/coins/{id}", coinGeckoId)
+                    .uri("/coins/{id}", id)
                     .retrieve()
                     .bodyToMono(CoinGeckoResponse.class)
                     .block();
@@ -50,14 +51,14 @@ public class CoinGeckoService {
                 BigDecimal price = response.getMarketData().getUsdPrice();
                 log.info("CoinGecko - {} 價格: ${}", coinGeckoId, price);
                 return PriceData.builder()
-                        .symbol(coinGeckoId)
+                        .symbol(id)
                         .price(price)
                         .updateTime(LocalDateTime.now())
                         .source("CoinGecko")
                         .build();
             }
 
-            log.warn("CoinGecko - 無法取得 {} 的價格", coinGeckoId);
+            log.warn("CoinGecko - 無法取得 {} 的價格", id);
             return null;
 
         } catch (Exception e) {
