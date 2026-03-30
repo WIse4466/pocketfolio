@@ -33,6 +33,10 @@
 - [x] 新用戶自動建立預設類別（餐飲、交通、娛樂、購物、住房、醫療、教育 / 薪資、獎金、投資收益、其他收入）
 - [x] 新用戶自動建立預設帳戶（現金、銀行帳戶、信用卡、投資帳戶）
 - [x] 資產搜尋 Autocomplete（known_assets 表 + TWSE/TPEX/CoinGecko 同步 + 前端 AutoComplete）
+- [x] Autocomplete 改善：改同步市值前 200（移除廢棄幣）、顯示排名標籤、CoinGecko ID 正規化小寫
+- [x] Retry + 指數退避（spring-retry @Retryable maxAttempts=3）+ Sanity check 測試
+- [x] 修正 Invalid Date（Jackson write-dates-as-timestamps=false）
+- [x] 修正價格更新 UI 誤報成功（檢查 result.success）
 
 ---
 
@@ -44,25 +48,6 @@
 - [ ] 後端轉帳邏輯：一筆轉帳 = 來源帳戶支出 + 目標帳戶收入（需選擇來源/目標帳戶）
 - [ ] 前端新增交易表單加入轉帳類型 + 目標帳戶選擇
 - [ ] 統計分析排除轉帳（避免重複計算）
-
-### 2. Autocomplete 改善（接續 PR #5）
-PR #5 待 merge，merge 後繼續：
-
-**a. Bitcoin 搜尋排名問題**
-- 問題：搜尋 "bitcoin" / "BTC" 出現大量垃圾幣，真正的比特幣被埋在後面
-- 解法：`KnownAsset` 加 `market_cap_rank` 欄位（nullable）
-  - 同步時先打 CoinGecko `/coins/markets?per_page=500` 取前 500 大市值幣並記錄排名
-  - 再打 `/coins/list` 補全其餘（排名為 null）
-  - 搜尋結果 `ORDER BY market_cap_rank NULLS LAST`
-
-**b. Retry + 指數退避**
-- 問題：TWSE/TPEX/CoinGecko 任一 API 偶發失敗時無重試
-- 解法：加入 `spring-retry` dependency，`syncTwse/syncTpex/syncCrypto` 各加 `@Retryable(maxAttempts=3, backoff=@Backoff(delay=2000, multiplier=2))`
-- 需在 `@SpringBootApplication` 加 `@EnableRetry`
-
-**c. Sanity check 測試**
-- 測試場景：mock WebClient 回傳 10 筆（低於閾值），驗證 `deleteByAssetType` 未被呼叫
-- 使用 `@SpringBootTest` + Mockito
 
 ---
 
@@ -82,7 +67,7 @@ PR #5 待 merge，merge 後繼續：
 - [ ] `ddl-auto` 改為 `validate`
 
 ### 5. 單元測試補完
-- [ ] KnownAssetSyncService sanity check 測試（API 回傳異常筆數，舊資料不被清除）
+- [x] KnownAssetSyncService sanity check 測試（TWSE / TPEX / CoinGecko 各 2 個測試案例）
 - [ ] AssetServiceTest
 - [ ] PriceServiceTest
 
