@@ -194,25 +194,6 @@ public class KnownAssetSyncService {
         return toSave.size();
     }
 
-    // ────────────── 全部同步 ──────────────
-
-    public void syncAll() {
-        int twse = syncSafe("TWSE", this::syncTwse);
-        int tpex = syncSafe("TPEX", this::syncTpex);
-        int crypto = syncSafe("CoinGecko", this::syncCrypto);
-        log.info("資產清單全量同步完成 — TWSE: {}, TPEX: {}, Crypto: {}", twse, tpex, crypto);
-    }
-
-    // 包裝每個 sync 方法：3 次 retry 都失敗後記錄 error，不讓例外往上傳讓 scheduler 中斷
-    private int syncSafe(String source, java.util.function.IntSupplier syncFn) {
-        try {
-            return syncFn.getAsInt();
-        } catch (Exception e) {
-            log.error("{} 同步最終失敗（已重試 3 次）：{}", source, e.getMessage());
-            return 0;
-        }
-    }
-
     // ────────────── 內部 DTO ──────────────
 
     @Data

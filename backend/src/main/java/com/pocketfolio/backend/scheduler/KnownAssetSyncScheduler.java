@@ -40,12 +40,25 @@ public class KnownAssetSyncScheduler {
 
     /**
      * 每天凌晨 2 點執行全量同步。
-     * 台股收盤後新增或下市的清單會在隔日更新。
+     * 直接呼叫 syncService 的各個方法（經過 Spring proxy），確保 @Retryable 和 @Transactional 正常生效。
+     * 不可改成 syncService.syncAll() 內部 this:: 呼叫，否則會繞過 AOP proxy（self-invocation 問題）。
      */
     @Scheduled(cron = "0 0 2 * * *")
     public void dailySync() {
         log.info("=== 定時任務開始：同步資產清單 ===");
-        syncService.syncAll();
+        syncSafe("TWSE", syncService::syncTwse);
+        syncSafe("TPEX", syncService::syncTpex);
+        syncSafe("CoinGecko", syncService::syncCrypto);
         log.info("=== 定時任務完成：資產清單同步 ===");
+    }
+
+    // retry 耗盡後 log error，不讓例外往上傳中斷排程
+    private void syncSafe(String source, java.util.function.IntSupplier syncFn) {
+        try {
+            int count = syncFn.getAsInt();
+            log.info("{} 同步完成：{} 筆", source, count);
+        } catch (Exception e) {
+            log.error("{} 同步最終失敗（已重試 3 次）：{}", source, e.getMessage());
+        }
     }
 }
