@@ -13,13 +13,13 @@ public interface KnownAssetRepository extends JpaRepository<KnownAsset, UUID> {
 
     boolean existsBySymbol(String symbol);
 
-    // 搜尋名稱或顯示代碼，筆數限制由 Pageable 控制（避免 JPQL LIMIT 相容性問題）
+    // 搜尋名稱或顯示代碼，市值排名小的優先（垃圾幣排後面），無排名的排最後
     @Query("""
             SELECT k FROM KnownAsset k
             WHERE k.assetType = :assetType
               AND (LOWER(k.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                 OR LOWER(k.displayCode) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            ORDER BY k.displayCode
+            ORDER BY k.marketCapRank ASC NULLS LAST, k.displayCode ASC
             """)
     List<KnownAsset> searchByKeyword(@Param("assetType") String assetType,
                                      @Param("keyword") String keyword,

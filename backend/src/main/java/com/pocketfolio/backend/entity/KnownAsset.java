@@ -35,4 +35,8 @@ public class KnownAsset {
     // 用戶看到的短代碼：2330、BTC（搜尋用）
     @Column(name = "display_code", nullable = false, length = 50)
     private String displayCode;
+
+    // CoinGecko 市值排名（前 1000 名才有值，其餘為 null）；搜尋結果排序依據
+    @Column(name = "market_cap_rank")
+    private Integer marketCapRank;
 }

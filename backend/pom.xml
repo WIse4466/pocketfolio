@@ -125,6 +125,16 @@
             <artifactId>postgres-socket-factory</artifactId>
             <version>1.22.0</version>
         </dependency>
+
+        <!-- Spring Retry（同步外部 API 失敗時自動重試）-->
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aspects</artifactId>
+        </dependency>
 	</dependencies>
 
 	<build>
