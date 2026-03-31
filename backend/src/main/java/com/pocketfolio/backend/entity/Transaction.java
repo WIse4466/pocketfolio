@@ -18,6 +18,10 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false)
+    private TransactionType type;
+
     @Column(nullable = false)
     private BigDecimal amount;
 
@@ -25,6 +29,10 @@ public class Transaction {
 
     @Column(nullable = false)
     private LocalDate date;
+
+    // 轉帳配對 ID：TRANSFER_OUT 與 TRANSFER_IN 共用同一個 UUID
+    @Column(name = "transfer_group_id")
+    private UUID transferGroupId;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
