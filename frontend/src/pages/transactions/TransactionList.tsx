@@ -19,12 +19,13 @@ import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { transactionApi } from '@/api/transaction.api';
 import { categoryApi } from '@/api/category.api';
 import { accountApi } from '@/api/account.api';
-import type { Transaction, TransactionRequest } from '@/types/transaction.types';
+import type { Transaction, TransactionRequest, TransactionType } from '@/types/transaction.types';
 import type { Category } from '@/types/category.types';
 import type { Account } from '@/types/account.types';
 import type { ColumnsType } from 'antd/es/table';
@@ -40,22 +41,22 @@ const TransactionList = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [selectedType, setSelectedType] = useState<TransactionType>('EXPENSE');
   const [form] = Form.useForm();
 
   // 篩選條件
   const [filters, setFilters] = useState<{
-  categoryId?: string;
-  accountId?: string;
-  startDate?: string;
-  endDate?: string;
-}>({
-  categoryId: undefined,
-  accountId: undefined,
-  startDate: undefined,
-  endDate: undefined,
-});
+    categoryId?: string;
+    accountId?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({
+    categoryId: undefined,
+    accountId: undefined,
+    startDate: undefined,
+    endDate: undefined,
+  });
 
-  // 載入資料
   useEffect(() => {
     loadTransactions();
     loadCategories();
@@ -65,11 +66,9 @@ const TransactionList = () => {
   const loadTransactions = async () => {
     setLoading(true);
     try {
-      const response = await transactionApi.getTransactions({
-        ...filters,
-      });
-      setTransactions(response.content || response as any); // 處理分頁或陣列回應
-    } catch (error) {
+      const response = await transactionApi.getTransactions({ ...filters });
+      setTransactions(response.content || (response as any));
+    } catch {
       message.error('載入交易記錄失敗');
     } finally {
       setLoading(false);
@@ -78,51 +77,49 @@ const TransactionList = () => {
 
   const loadCategories = async () => {
     try {
-      const data = await categoryApi.getCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('載入類別失敗', error);
+      setCategories(await categoryApi.getCategories());
+    } catch {
+      console.error('載入類別失敗');
     }
   };
 
   const loadAccounts = async () => {
     try {
-      const data = await accountApi.getAccounts();
-      setAccounts(data);
-    } catch (error) {
-      console.error('載入帳戶失敗', error);
+      setAccounts(await accountApi.getAccounts());
+    } catch {
+      console.error('載入帳戶失敗');
     }
   };
 
-  // 新增交易
   const handleCreate = () => {
     setEditingTransaction(null);
+    setSelectedType('EXPENSE');
     form.resetFields();
+    form.setFieldsValue({ type: 'EXPENSE', date: dayjs() });
     setModalVisible(true);
   };
 
-  // 編輯交易
   const handleEdit = (record: Transaction) => {
+    if (record.type === 'TRANSFER_OUT' || record.type === 'TRANSFER_IN') {
+      message.warning('轉帳記錄不支援編輯，請刪除後重新建立');
+      return;
+    }
     setEditingTransaction(record);
-    form.setFieldsValue({
-      ...record,
-      date: dayjs(record.date),
-    });
+    setSelectedType(record.type);
+    form.setFieldsValue({ ...record, date: dayjs(record.date) });
     setModalVisible(true);
   };
 
-  // 刪除交易
   const handleDelete = async (id: string) => {
     try {
       await transactionApi.deleteTransaction(id);
       message.success('刪除成功');
       loadTransactions();
-    } catch (error) {
+    } catch {
       message.error('刪除失敗');
     }
   };
 
-  // 提交表單
   const handleSubmit = async (values: any) => {
     try {
       const requestData: TransactionRequest = {
@@ -140,37 +137,64 @@ const TransactionList = () => {
 
       setModalVisible(false);
       loadTransactions();
-    } catch (error) {
+    } catch {
       message.error(editingTransaction ? '更新失敗' : '新增失敗');
     }
   };
 
-  // 表格欄位
+  // 欄位顏色與符號
+  const amountColor = (type: TransactionType) => {
+    if (type === 'INCOME') return '#52c41a';
+    if (type === 'TRANSFER_OUT' || type === 'TRANSFER_IN') return '#1677ff';
+    return '#ff4d4f';
+  };
+
+  const amountPrefix = (type: TransactionType) => {
+    if (type === 'INCOME') return '+';
+    if (type === 'TRANSFER_IN') return '+';
+    return '-';
+  };
+
   const columns: ColumnsType<Transaction> = [
     {
       title: '日期',
       dataIndex: 'date',
       key: 'date',
-      width: 120,
+      width: 110,
       render: (date: string) => formatDate(date),
       sorter: (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix(),
     },
     {
-      title: '類別',
-      dataIndex: 'categoryName',
-      key: 'categoryName',
-      width: 120,
-      render: (name: string, record: Transaction) => (
-        <Tag color={record.categoryType === 'INCOME' ? 'green' : 'red'}>
-          {name || '未分類'}
-        </Tag>
-      ),
+      title: '類型 / 類別',
+      key: 'typeCategory',
+      width: 160,
+      render: (_, record) => {
+        if (record.type === 'TRANSFER_OUT') {
+          return (
+            <Tag color="blue" icon={<SwapOutlined />}>
+              {record.accountName} → {record.toAccountName ?? '?'}
+            </Tag>
+          );
+        }
+        if (record.type === 'TRANSFER_IN') {
+          return (
+            <Tag color="blue" icon={<SwapOutlined />}>
+              轉入
+            </Tag>
+          );
+        }
+        return (
+          <Tag color={record.type === 'INCOME' ? 'green' : 'red'}>
+            {record.categoryName ?? '未分類'}
+          </Tag>
+        );
+      },
     },
     {
       title: '帳戶',
       dataIndex: 'accountName',
       key: 'accountName',
-      width: 120,
+      width: 110,
     },
     {
       title: '金額',
@@ -178,10 +202,9 @@ const TransactionList = () => {
       key: 'amount',
       width: 120,
       align: 'right',
-      render: (amount: number, record: Transaction) => (
-        <span style={{ color: record.categoryType === 'INCOME' ? '#52c41a' : '#ff4d4f' }}>
-          {record.categoryType === 'INCOME' ? '+' : '-'}
-          {formatCurrency(amount)}
+      render: (amount: number, record) => (
+        <span style={{ color: amountColor(record.type) }}>
+          {amountPrefix(record.type)}{formatCurrency(amount)}
         </span>
       ),
       sorter: (a, b) => a.amount - b.amount,
@@ -203,16 +226,26 @@ const TransactionList = () => {
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            disabled={record.type === 'TRANSFER_IN'}
           >
             編輯
           </Button>
           <Popconfirm
-            title="確定要刪除嗎？"
+            title={
+              record.type === 'TRANSFER_OUT'
+                ? '刪除轉帳將同時刪除配對的轉入記錄，確定嗎？'
+                : '確定要刪除嗎？'
+            }
             onConfirm={() => handleDelete(record.id)}
             okText="確定"
             cancelText="取消"
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              disabled={record.type === 'TRANSFER_IN'}
+            >
               刪除
             </Button>
           </Popconfirm>
@@ -221,9 +254,10 @@ const TransactionList = () => {
     },
   ];
 
+  const isTransfer = selectedType === 'TRANSFER_OUT';
+
   return (
     <div>
-      {/* 標題與操作按鈕 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={2}>交易記錄</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
@@ -274,7 +308,6 @@ const TransactionList = () => {
         </Button>
       </Space>
 
-      {/* 表格 */}
       <Table
         columns={columns}
         dataSource={transactions}
@@ -295,42 +328,68 @@ const TransactionList = () => {
         footer={null}
         width={600}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             label="日期"
             name="date"
             rules={[{ required: true, message: '請選擇日期' }]}
-            initialValue={dayjs()}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
-            label="類別"
-            name="categoryId"
-            rules={[{ required: true, message: '請選擇類別' }]}
+            label="交易類型"
+            name="type"
+            rules={[{ required: true, message: '請選擇交易類型' }]}
           >
-            <Select placeholder="請選擇類別">
-              {categories.map((cat) => (
-                <Select.Option key={cat.id} value={cat.id}>
-                  <Tag color={cat.type === 'INCOME' ? 'green' : 'red'}>
-                    {cat.type === 'INCOME' ? '收入' : '支出'}
-                  </Tag>
-                  {cat.name}
-                </Select.Option>
-              ))}
+            <Select
+              onChange={(v: TransactionType) => {
+                setSelectedType(v);
+                form.setFieldValue('categoryId', undefined);
+                form.setFieldValue('toAccountId', undefined);
+              }}
+              disabled={!!editingTransaction}
+            >
+              <Select.Option value="INCOME">
+                <Tag color="green">收入</Tag>
+              </Select.Option>
+              <Select.Option value="EXPENSE">
+                <Tag color="red">支出</Tag>
+              </Select.Option>
+              <Select.Option value="TRANSFER_OUT">
+                <Tag color="blue">轉帳</Tag>
+              </Select.Option>
             </Select>
           </Form.Item>
 
+          {/* 類別（收入/支出顯示） */}
+          {!isTransfer && (
+            <Form.Item
+              label="類別"
+              name="categoryId"
+              rules={[{ required: true, message: '請選擇類別' }]}
+            >
+              <Select placeholder="請選擇類別">
+                {categories
+                  .filter((cat) =>
+                    selectedType === 'INCOME' ? cat.type === 'INCOME' : cat.type === 'EXPENSE'
+                  )
+                  .map((cat) => (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
+          )}
+
+          {/* 來源帳戶 */}
           <Form.Item
-            label="帳戶"
+            label={isTransfer ? '來源帳戶' : '帳戶'}
             name="accountId"
+            rules={isTransfer ? [{ required: true, message: '請選擇來源帳戶' }] : []}
           >
-            <Select placeholder="請選擇帳戶" allowClear>
+            <Select placeholder="請選擇帳戶" allowClear={!isTransfer}>
               {accounts.map((acc) => (
                 <Select.Option key={acc.id} value={acc.id}>
                   {acc.name}
@@ -338,6 +397,23 @@ const TransactionList = () => {
               ))}
             </Select>
           </Form.Item>
+
+          {/* 目標帳戶（轉帳顯示） */}
+          {isTransfer && (
+            <Form.Item
+              label="目標帳戶"
+              name="toAccountId"
+              rules={[{ required: true, message: '請選擇目標帳戶' }]}
+            >
+              <Select placeholder="請選擇目標帳戶">
+                {accounts.map((acc) => (
+                  <Select.Option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
 
           <Form.Item
             label="金額"
@@ -355,15 +431,8 @@ const TransactionList = () => {
             />
           </Form.Item>
 
-          <Form.Item
-            label="備註"
-            name="note"
-            rules={[{ required: true, message: '請輸入備註' }]}
-          >
-            <Input.TextArea
-              placeholder="請輸入備註"
-              rows={3}
-            />
+          <Form.Item label="備註" name="note">
+            <Input.TextArea placeholder="請輸入備註" rows={3} />
           </Form.Item>
 
           <Form.Item>
@@ -371,9 +440,7 @@ const TransactionList = () => {
               <Button type="primary" htmlType="submit">
                 {editingTransaction ? '更新' : '新增'}
               </Button>
-              <Button onClick={() => setModalVisible(false)}>
-                取消
-              </Button>
+              <Button onClick={() => setModalVisible(false)}>取消</Button>
             </Space>
           </Form.Item>
         </Form>

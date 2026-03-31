@@ -1,8 +1,8 @@
 package com.pocketfolio.backend.service;
 
 import com.pocketfolio.backend.dto.MonthlySummaryResponse;
-import com.pocketfolio.backend.entity.CategoryType;
 import com.pocketfolio.backend.entity.Transaction;
+import com.pocketfolio.backend.entity.TransactionType;
 import com.pocketfolio.backend.repository.TransactionRepository;
 import com.pocketfolio.backend.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -21,19 +21,18 @@ public class StaticsService {
 
     private final TransactionRepository transactionRepository;
 
-    // 月度收支統計
+    // 月度收支統計（轉帳已由 Repository 查詢排除）
     public MonthlySummaryResponse getMonthlySummary(int year, int month) {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
 
-        // 只查詢當前用戶的交易
+        // 只查詢當前用戶的交易（不含轉帳）
         List<Transaction> transactions = transactionRepository
                 .findByUserIdAndYearAndMonth(currentUserId, year, month);
 
-        // 分離收入和支出
+        // 分離收入和支出（依 TransactionType 判斷）
         Map<Boolean, List<Transaction>> byType = transactions.stream()
-                .filter(tx -> tx.getCategory() != null)
                 .collect(Collectors.partitioningBy(
-                        tx -> tx.getCategory().getType() == CategoryType.INCOME
+                        tx -> tx.getType() == TransactionType.INCOME
                 ));
 
         List<Transaction> incomeTransactions = byType.get(true);
@@ -71,11 +70,12 @@ public class StaticsService {
                 .build();
     }
 
-    // Helper: 依類別分組統計
+    // Helper: 依類別分組統計（無類別的交易略過）
     private List<MonthlySummaryResponse.CategorySummary> groupByCategory(
             List<Transaction> transactions, BigDecimal total
     ) {
         Map<String, BigDecimal> categoryMap = transactions.stream()
+                .filter(tx -> tx.getCategory() != null)
                 .collect(Collectors.groupingBy(
                         tx -> tx.getCategory().getName(),
                         Collectors.mapping(
