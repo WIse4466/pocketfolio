@@ -1,6 +1,6 @@
 # PocketFolio 待辦事項
 
-更新時間：2026-03-30
+更新時間：2026-03-31
 
 ---
 
@@ -37,17 +37,17 @@
 - [x] Retry + 指數退避（spring-retry @Retryable maxAttempts=3）+ Sanity check 測試
 - [x] 修正 Invalid Date（Jackson write-dates-as-timestamps=false）
 - [x] 修正價格更新 UI 誤報成功（檢查 result.success）
+- [x] 轉帳交易（Double-Entry Lite）：TRANSFER_OUT / TRANSFER_IN + transfer_group_id 配對，刪除串聯，統計排除轉帳
 
 ---
 
 ## 🔴 高優先級
 
-### 1. 轉帳交易類別
-**問題：** 目前交易只有收入/支出兩種類型，無法記錄帳戶間轉帳。
-- [ ] 後端 TransactionType enum 加入 `TRANSFER`
-- [ ] 後端轉帳邏輯：一筆轉帳 = 來源帳戶支出 + 目標帳戶收入（需選擇來源/目標帳戶）
-- [ ] 前端新增交易表單加入轉帳類型 + 目標帳戶選擇
-- [ ] 統計分析排除轉帳（避免重複計算）
+### 1. 資產購買連結帳戶扣款
+**問題：** 買入資產時應同步從指定帳戶扣款，目前兩者完全獨立。
+- [ ] 後端：建立資產時可選填 `fromAccountId`
+- [ ] 後端：若有 `fromAccountId`，自動建立一筆 `TRANSFER_OUT`（帳戶 → 投資）配對的 `EXPENSE` 交易
+- [ ] 前端：資產新增表單加入「從哪個帳戶扣款」選填欄位
 
 ---
 
@@ -78,11 +78,27 @@
 ### 6. Service 層重構
 - [ ] 提取共用用戶驗證邏輯（目前各 service 重複）
 
-### 7. 監控
+### 7. 日誌管理
+- [ ] 後端：引入結構化日誌（Logback JSON appender），方便 GCP Cloud Logging 查詢
+- [ ] 後端：敏感操作審計 log（登入、刪除、轉帳）
+- [ ] GCP Cloud Logging：設定 log-based alert（Error 率異常時通知）
+
+### 8. 用戶設定
+- [ ] 更改顯示名稱
+- [ ] 更改密碼
+- [ ] 忘記密碼（Email 重設連結）
+- [ ] 上傳大頭貼（GCS 儲存）
+- [ ] 多語言支援（i18n，至少中 / 英）
+
+### 9. 品牌 / 外觀
+- [ ] 換網頁 favicon（`public/favicon.ico`）
+- [ ] PWA manifest icon
+
+### 10. 監控
 - [ ] GCP Billing 預算警報（建議 $20/月上限）
 - [ ] Spring Boot Actuator + Cloud Run health check
 
-### 8. 前端效能
+### 11. 前端效能
 - [ ] 代碼分割 + 懶加載
 - [ ] 大列表虛擬滾動
 
