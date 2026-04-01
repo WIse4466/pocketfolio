@@ -46,7 +46,6 @@ public class YahooFinanceService {
                     .block();
 
             if (response != null && response.getPrice() != null) {
-                Thread.sleep(500);
                 BigDecimal price = response.getPrice();
                 log.info("Yahoo Finance - {} 價格: {}", symbol, price);
 

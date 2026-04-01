@@ -47,7 +47,6 @@ public class CoinGeckoService {
                     .block();
 
             if (response != null && response.getMarketData() != null) {
-                Thread.sleep(500);
                 BigDecimal price = response.getMarketData().getUsdPrice();
                 log.info("CoinGecko - {} 價格: ${}", coinGeckoId, price);
                 return PriceData.builder()
