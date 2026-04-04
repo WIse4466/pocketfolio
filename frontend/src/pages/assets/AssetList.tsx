@@ -45,7 +45,8 @@ const { Title, Text } = Typography;
 const AssetList = () => {
   const [loading, setLoading] = useState(false);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);  // 投資帳戶（左側選擇）
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);  // 所有帳戶（扣款選擇）
   const [selectedAccount, setSelectedAccount] = useState<string>();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -111,10 +112,14 @@ const AssetList = () => {
 
   const loadAccounts = async () => {
     try {
-      const data = await accountApi.getAccounts({ type: 'INVESTMENT' });
-      setAccounts(data);
-      if (data.length > 0) {
-        setSelectedAccount(data[0].id);
+      const [investmentAccounts, all] = await Promise.all([
+        accountApi.getAccounts({ type: 'INVESTMENT' }),
+        accountApi.getAccounts(),
+      ]);
+      setAccounts(investmentAccounts);
+      setAllAccounts(all);
+      if (investmentAccounts.length > 0) {
+        setSelectedAccount(investmentAccounts[0].id);
       }
     } catch (error) {
       message.error('載入帳戶失敗');
@@ -563,6 +568,27 @@ const AssetList = () => {
               min={0}
             />
           </Form.Item>
+
+          {!editingAsset && (
+            <Form.Item
+              label="從哪個帳戶扣款"
+              name="fromAccountId"
+              extra="選填。購買時會自動從該帳戶建立一筆轉帳記錄。"
+            >
+              <Select
+                placeholder="不扣款（僅記錄資產）"
+                allowClear
+              >
+                {allAccounts
+                  .filter((acc) => acc.id !== form.getFieldValue('accountId'))
+                  .map((acc) => (
+                    <Select.Option key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </Form.Item>
+          )}
 
           <Form.Item>
             <Space>

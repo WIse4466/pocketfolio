@@ -22,4 +22,5 @@ export interface AssetRequest {
   type: AssetType;
   quantity: number;
   costPrice: number;
+  fromAccountId?: string;
 }
