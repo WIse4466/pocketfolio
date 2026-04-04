@@ -12,13 +12,15 @@ import AssetList from '@/pages/assets/AssetList';
 import AssetHistoryPage from '@/pages/assets/AssetHistoryPage';
 import StatisticsPage from '@/pages/statistics/StatisticsPage';
 
-// 受保護路由組件
+// 受保護路由組件（與 router export 同檔，react-refresh 限制不適用此模式）
+// eslint-disable-next-line react-refresh/only-export-components
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 // 公開路由組件（已登入則跳轉到首頁）
+// eslint-disable-next-line react-refresh/only-export-components
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuthStore();
   return !isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;

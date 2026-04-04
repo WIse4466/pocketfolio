@@ -62,5 +62,6 @@ export const useWebSocket = () => {
       clientRef.current = null;
       setConnected(false);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 };

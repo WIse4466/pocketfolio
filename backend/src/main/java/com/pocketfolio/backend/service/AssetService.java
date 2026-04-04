@@ -5,14 +5,20 @@ import com.pocketfolio.backend.dto.AssetResponse;
 import com.pocketfolio.backend.entity.Account;
 import com.pocketfolio.backend.entity.Asset;
 import com.pocketfolio.backend.entity.AssetType;
+import com.pocketfolio.backend.entity.Transaction;
+import com.pocketfolio.backend.entity.TransactionType;
 import com.pocketfolio.backend.entity.User;
 import com.pocketfolio.backend.exception.ResourceNotFoundException;
 import com.pocketfolio.backend.repository.AccountRepository;
 import com.pocketfolio.backend.repository.AssetRepository;
+import com.pocketfolio.backend.repository.TransactionRepository;
 import com.pocketfolio.backend.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,8 +29,10 @@ public class AssetService {
 
     private final AssetRepository assetRepository;
     private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
 
     // ── Create ──────────────────────────────────────────
+    @Transactional
     public AssetResponse createAsset(AssetRequest request) {
         UUID currentUserId = SecurityUtil.getCurrentUserId();
 
@@ -59,7 +67,48 @@ public class AssetService {
         user.setId(currentUserId);
         asset.setUser(user);
 
-        return toResponse(assetRepository.save(asset));
+        Asset saved = assetRepository.save(asset);
+
+        // 若有填寫來源帳戶，自動建立轉帳記錄（TRANSFER_OUT → TRANSFER_IN）
+        if (request.getFromAccountId() != null) {
+            Account fromAccount = accountRepository.findById(request.getFromAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "找不到 ID 為 " + request.getFromAccountId() + " 的來源帳戶"));
+            if (!fromAccount.getUser().getId().equals(currentUserId)) {
+                throw new IllegalArgumentException("無權使用此帳戶");
+            }
+            if (fromAccount.getId().equals(account.getId())) {
+                throw new IllegalArgumentException("來源帳戶與投資帳戶不能相同");
+            }
+
+            BigDecimal totalCost = request.getQuantity().multiply(request.getCostPrice());
+            UUID groupId = UUID.randomUUID();
+            LocalDate today = LocalDate.now();
+            String note = "購入 " + saved.getName();
+
+            Transaction out = new Transaction();
+            out.setType(TransactionType.TRANSFER_OUT);
+            out.setAmount(totalCost);
+            out.setNote(note);
+            out.setDate(today);
+            out.setAccount(fromAccount);
+            out.setTransferGroupId(groupId);
+            out.setUser(user);
+
+            Transaction in = new Transaction();
+            in.setType(TransactionType.TRANSFER_IN);
+            in.setAmount(totalCost);
+            in.setNote(note);
+            in.setDate(today);
+            in.setAccount(account);
+            in.setTransferGroupId(groupId);
+            in.setUser(user);
+
+            transactionRepository.save(out);
+            transactionRepository.save(in);
+        }
+
+        return toResponse(saved);
     }
 
     // ── Read (單筆) ───────────────────────────────────────

@@ -33,4 +33,7 @@ public class AssetRequest {
     private BigDecimal costPrice;
 
     private String note;
+
+    // 選填：購買時從哪個帳戶扣款（若填寫，自動建立轉帳記錄）
+    private UUID fromAccountId;
 }
