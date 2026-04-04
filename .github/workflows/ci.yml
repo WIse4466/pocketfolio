@@ -48,7 +48,7 @@ jobs:
           cache: 'maven'
 
       - name: Run tests
-        run: ./mvnw test
+        run: ./mvnw test -e
         working-directory: backend
 
       - name: Upload test report
