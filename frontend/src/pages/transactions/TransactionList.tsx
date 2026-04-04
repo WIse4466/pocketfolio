@@ -61,13 +61,14 @@ const TransactionList = () => {
     loadTransactions();
     loadCategories();
     loadAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadTransactions = async () => {
     setLoading(true);
     try {
       const response = await transactionApi.getTransactions({ ...filters });
-      setTransactions(response.content || (response as any));
+      setTransactions(response.content);
     } catch {
       message.error('載入交易記錄失敗');
     } finally {
@@ -120,7 +121,7 @@ const TransactionList = () => {
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: TransactionRequest & { date: { format: (s: string) => string } }) => {
     try {
       const requestData: TransactionRequest = {
         ...values,

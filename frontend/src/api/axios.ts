@@ -37,7 +37,7 @@ axiosInstance.interceptors.response.use(
     // 處理錯誤
     if (error.response) {
       const status = error.response.status;
-      const data: any = error.response.data;
+      const data = error.response.data as { message?: string };
 
       switch (status) {
         case 401:

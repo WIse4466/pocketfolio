@@ -73,8 +73,8 @@ const AssetList = () => {
           results.map((r) => ({
             value: r.symbol,
             label: r.marketCapRank
-              ? `${r.displayCode}　${r.name}　#${r.marketCapRank}`
-              : `${r.displayCode}　${r.name}`,
+              ? `${r.displayCode}  ${r.name}  #${r.marketCapRank}`
+              : `${r.displayCode}  ${r.name}`,
             data: r,
           }))
         );
@@ -102,12 +102,14 @@ const AssetList = () => {
     if (lastPriceUpdateAt && selectedAccount) {
       loadAssets();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastPriceUpdateAt]);
 
   useEffect(() => {
     if (selectedAccount) {
       loadAssets();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount]);
 
   const loadAccounts = async () => {
@@ -121,7 +123,7 @@ const AssetList = () => {
       if (investmentAccounts.length > 0) {
         setSelectedAccount(investmentAccounts[0].id);
       }
-    } catch (error) {
+    } catch {
       message.error('載入帳戶失敗');
     }
   };
@@ -133,7 +135,7 @@ const AssetList = () => {
     try {
       const data = await assetApi.getAccountAssets(selectedAccount);
       setAssets(data);
-    } catch (error) {
+    } catch {
       message.error('載入資產失敗');
     } finally {
       setLoading(false);
@@ -167,7 +169,7 @@ const AssetList = () => {
       await assetApi.deleteAsset(id);
       message.success('刪除成功');
       loadAssets();
-    } catch (error) {
+    } catch {
       message.error('刪除失敗');
     }
   };
@@ -182,7 +184,7 @@ const AssetList = () => {
       } else {
         message.error(`價格更新失敗：${result.errorMessage ?? '無法取得最新價格'}`);
       }
-    } catch (error) {
+    } catch {
       message.error('價格更新失敗');
     }
   };
@@ -195,7 +197,7 @@ const AssetList = () => {
       const successCount = results.filter((r) => r.success).length;
       message.success(`成功更新 ${successCount} 個資產價格`);
       loadAssets();
-    } catch (error) {
+    } catch {
       message.error('批次更新失敗');
     } finally {
       setUpdating(false);
@@ -215,7 +217,7 @@ const AssetList = () => {
 
       setModalVisible(false);
       loadAssets();
-    } catch (error) {
+    } catch {
       message.error(editingAsset ? '更新失敗' : '新增失敗');
     }
   };

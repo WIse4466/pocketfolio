@@ -1,5 +1,5 @@
 // API 通用回應格式
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success: boolean;

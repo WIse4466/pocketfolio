@@ -6,7 +6,6 @@ import {
   Modal,
   Form,
   Input,
-  Select,
   message,
   Popconfirm,
   Tag,
@@ -35,6 +34,7 @@ const CategoryList = () => {
   // 載入資料
   useEffect(() => {
     loadCategories();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType]);
 
   const loadCategories = async () => {
@@ -42,7 +42,7 @@ const CategoryList = () => {
     try {
       const data = await categoryApi.getCategories(filterType);
       setCategories(data);
-    } catch (error) {
+    } catch {
       message.error('載入類別失敗');
     } finally {
       setLoading(false);
@@ -69,7 +69,7 @@ const CategoryList = () => {
       await categoryApi.deleteCategory(id);
       message.success('刪除成功');
       loadCategories();
-    } catch (error) {
+    } catch {
       message.error('刪除失敗，可能有交易記錄使用此類別');
     }
   };
@@ -87,7 +87,7 @@ const CategoryList = () => {
 
       setModalVisible(false);
       loadCategories();
-    } catch (error) {
+    } catch {
       message.error(editingCategory ? '更新失敗' : '新增失敗');
     }
   };

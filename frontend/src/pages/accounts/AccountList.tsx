@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   Table,
   Button,
@@ -34,7 +34,7 @@ import { formatCurrency } from '@/utils/format';
 const { Title } = Typography;
 
 // 帳戶類型對應
-const accountTypeConfig: Record<AccountType, { label: string; color: string; icon: any }> = {
+const accountTypeConfig: Record<AccountType, { label: string; color: string; icon: ReactNode }> = {
   CASH: { label: '現金', color: 'green', icon: <WalletOutlined /> },
   BANK: { label: '銀行', color: 'blue', icon: <BankOutlined /> },
   CREDIT_CARD: { label: '信用卡', color: 'orange', icon: <CreditCardOutlined /> },
@@ -58,7 +58,7 @@ const AccountList = () => {
     try {
       const data = await accountApi.getAccounts();
       setAccounts(data);
-    } catch (error) {
+    } catch {
       message.error('載入帳戶失敗');
     } finally {
       setLoading(false);
@@ -86,7 +86,7 @@ const AccountList = () => {
       await accountApi.deleteAccount(id);
       message.success('刪除成功');
       loadAccounts();
-    } catch (error) {
+    } catch {
       message.error('刪除失敗，可能有交易記錄或資產使用此帳戶');
     }
   };
@@ -104,7 +104,7 @@ const AccountList = () => {
 
       setModalVisible(false);
       loadAccounts();
-    } catch (error) {
+    } catch {
       message.error(editingAccount ? '更新失敗' : '新增失敗');
     }
   };
@@ -320,7 +320,7 @@ const AccountList = () => {
               placeholder="請輸入初始餘額"
               precision={2}
               formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => value!.replace(/\$\s?|(,*)/g, '') as any}
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, '') as string & number}
             />
           </Form.Item>
 

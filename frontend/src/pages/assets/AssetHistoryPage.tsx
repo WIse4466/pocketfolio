@@ -23,6 +23,7 @@ const AssetHistoryPage = () => {
 
   useEffect(() => {
     loadHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
 
   const loadHistory = async () => {
@@ -43,7 +44,11 @@ const AssetHistoryPage = () => {
   const profitColor = isProfit ? '#52c41a' : '#ff4d4f';
 
   // 圖表 tooltip 格式
-  const customTooltip = ({ active, payload, label }: any) => {
+  const customTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: readonly { payload?: PortfolioHistoryPoint }[];
+    label?: string | number;
+  }) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload as PortfolioHistoryPoint;
     return (
