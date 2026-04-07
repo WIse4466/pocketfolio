@@ -6,6 +6,11 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    # db-f1-micro 的 max_connections = 25，Cloud Run 部署時新舊 revision 同時存在
+    # 預設 HikariCP pool-size = 10，兩個 instance 相加就會超限，因此縮小 pool
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
 
   jpa:
     hibernate:
