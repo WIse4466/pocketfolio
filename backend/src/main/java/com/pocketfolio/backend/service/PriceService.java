@@ -188,9 +188,13 @@ public class PriceService {
                     PriceUpdateResponse result = updateAssetPrice(asset.getId());
                     if (result.isSuccess()) {
                         successCount++;
+                        Thread.sleep(200); // 限速：避免連續 cache miss 時觸發外部 API rate limit
                     }
-
-                }catch (Exception e) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("價格更新排程被中斷，已更新 {}/{} 筆", successCount, totalAssets);
+                    return successCount;
+                } catch (Exception e) {
                     log.error("更新資產價格失敗: {} - {}", asset.getSymbol(), e.getMessage());
                 }
             }
