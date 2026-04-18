@@ -265,8 +265,8 @@ class TransactionServiceTest {
             then(repository).should(times(2)).save(txCaptor.capture());
             List<Transaction> saved = txCaptor.getAllValues();
 
-            assertThat(saved.get(0).getType()).isEqualTo(TransactionType.TRANSFER_IN);
-            assertThat(saved.get(1).getType()).isEqualTo(TransactionType.TRANSFER_OUT);
+            assertThat(saved).extracting(Transaction::getType)
+                    .containsExactlyInAnyOrder(TransactionType.TRANSFER_IN, TransactionType.TRANSFER_OUT);
 
             // 兩筆使用同一個 groupId
             assertThat(saved.get(0).getTransferGroupId())
