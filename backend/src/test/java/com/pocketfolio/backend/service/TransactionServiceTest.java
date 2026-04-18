@@ -2,8 +2,10 @@ package com.pocketfolio.backend.service;
 
 import com.pocketfolio.backend.dto.TransactionRequest;
 import com.pocketfolio.backend.dto.TransactionResponse;
-import com.pocketfolio.backend.entity.Transaction;
+import com.pocketfolio.backend.entity.*;
 import com.pocketfolio.backend.exception.ResourceNotFoundException;
+import com.pocketfolio.backend.repository.AccountRepository;
+import com.pocketfolio.backend.repository.CategoryRepository;
 import com.pocketfolio.backend.repository.TransactionRepository;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,350 +31,565 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 
-@Disabled("Phase 3 完成後需重寫測試以支援用戶隔離")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TransactionService 單元測試")
-public class TransactionServiceTest {
+class TransactionServiceTest {
 
-    @Mock
-    TransactionRepository repository;
+    @Mock private TransactionRepository repository;
+    @Mock private CategoryRepository categoryRepository;
+    @Mock private AccountRepository accountRepository;
 
-    @InjectMocks
-    TransactionService service;
+    @InjectMocks private TransactionService service;
 
-    @Captor
-    ArgumentCaptor<Transaction> transactionCaptor;
+    @Captor private ArgumentCaptor<Transaction> txCaptor;
 
-    UUID txId;
-    Transaction savedTx;
+    static final UUID CURRENT_USER_ID = UUID.randomUUID();
+    static final UUID OTHER_USER_ID   = UUID.randomUUID();
 
     @BeforeEach
-    void setUp() {
-        txId = UUID.randomUUID();
-
-        savedTx = new Transaction();
-        savedTx.setId(txId);
-        savedTx.setAmount(new BigDecimal("1000"));
-        savedTx.setNote("薪水");
-        savedTx.setDate(LocalDate.of(2026, 2, 15));
+    void setUpSecurityContext() {
+        User user = new User();
+        user.setId(CURRENT_USER_ID);
+        Authentication auth = new UsernamePasswordAuthenticationToken(user, null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    // Create
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private User userWith(UUID id) {
+        User u = new User();
+        u.setId(id);
+        return u;
+    }
+
+    private Account accountWith(UUID id, UUID ownerId) {
+        Account a = new Account();
+        a.setId(id);
+        a.setName("帳戶-" + id.toString().substring(0, 4));
+        a.setType(AccountType.CASH);
+        a.setInitialBalance(BigDecimal.ZERO);
+        a.setUser(userWith(ownerId));
+        return a;
+    }
+
+    private Category categoryWith(UUID id, UUID ownerId) {
+        Category c = new Category();
+        c.setId(id);
+        c.setName("類別-" + id.toString().substring(0, 4));
+        c.setType(CategoryType.EXPENSE);
+        c.setUser(userWith(ownerId));
+        return c;
+    }
+
+    private Transaction txEntity(UUID id, TransactionType type, UUID ownerId) {
+        Transaction tx = new Transaction();
+        tx.setId(id);
+        tx.setType(type);
+        tx.setAmount(new BigDecimal("1000"));
+        tx.setDate(LocalDate.of(2026, 1, 1));
+        tx.setUser(userWith(ownerId));
+        return tx;
+    }
+
+    private TransactionRequest incomeRequest() {
+        TransactionRequest req = new TransactionRequest();
+        req.setType(TransactionType.INCOME);
+        req.setAmount(new BigDecimal("1000"));
+        req.setNote("薪水");
+        req.setDate(LocalDate.of(2026, 2, 15));
+        return req;
+    }
+
+    private TransactionRequest transferRequest(UUID fromAccountId, UUID toAccountId) {
+        TransactionRequest req = new TransactionRequest();
+        req.setType(TransactionType.TRANSFER_OUT);
+        req.setAmount(new BigDecimal("500"));
+        req.setDate(LocalDate.of(2026, 3, 1));
+        req.setAccountId(fromAccountId);
+        req.setToAccountId(toAccountId);
+        return req;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // createTransaction — INCOME / EXPENSE
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("createTransaction")
-    class CreateTransactionTests {
+    @DisplayName("createTransaction（一般交易）")
+    class CreateNormalTransaction {
 
         @Test
-        @DisplayName("正確將 Request DTO 的所有欄位映射到 Entity 並儲存")
-        void create_correctMapping() {
-            // Arrange
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("1000"));
-            request.setNote("薪水");
-            request.setDate(LocalDate.of(2026, 2, 15));
+        @DisplayName("正確將 Request 欄位映射到 Entity 並儲存")
+        void create_correctFieldMapping() {
+            Transaction result = txEntity(UUID.randomUUID(), TransactionType.INCOME, CURRENT_USER_ID);
+            given(repository.save(any())).willReturn(result);
 
-            given(repository.save(any(Transaction.class))).willReturn(savedTx);
+            service.createTransaction(incomeRequest());
 
-            // Act
-            TransactionResponse response = service.createTransaction(request);
+            then(repository).should().save(txCaptor.capture());
+            Transaction captured = txCaptor.getValue();
 
-            // Assert - 使用 Captor 驗證傳給 Repository 的物件
-            then(repository).should().save(transactionCaptor.capture());
-            Transaction captured = transactionCaptor.getValue();
-
-            assertThat(captured.getAmount()).isEqualByComparingTo(request.getAmount());
-            assertThat(captured.getNote()).isEqualTo(request.getNote());
-            assertThat(captured.getDate()).isEqualTo(request.getDate());
-
-            // Assert - 驗證回傳的 Response
-            assertThat(response.getId()).isEqualTo(savedTx.getId());
-            assertThat(response.getAmount()).isEqualByComparingTo("1000");
-            assertThat(response.getNote()).isEqualTo("薪水");
-            assertThat(response.getDate()).isEqualTo(LocalDate.of(2026, 2, 15));
+            assertThat(captured.getAmount()).isEqualByComparingTo("1000");
+            assertThat(captured.getNote()).isEqualTo("薪水");
+            assertThat(captured.getDate()).isEqualTo(LocalDate.of(2026, 2, 15));
+            assertThat(captured.getType()).isEqualTo(TransactionType.INCOME);
+            assertThat(captured.getUser().getId()).isEqualTo(CURRENT_USER_ID);
         }
 
         @Test
-        @DisplayName("date 為 null 時，自動設定今天日期再儲存")
+        @DisplayName("date 為 null 時，自動設定為今天")
         void create_withNullDate_setsToday() {
-            // Given
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("500"));
-            request.setNote("測試");
-            request.setDate(null);  // 沒有傳日期
+            TransactionRequest req = incomeRequest();
+            req.setDate(null);
 
-            Transaction txWithToday = new Transaction();
-            txWithToday.setId(UUID.randomUUID());
-            txWithToday.setAmount(new BigDecimal("500"));
-            txWithToday.setNote("測試");
-            txWithToday.setDate(LocalDate.now());
+            Transaction result = txEntity(UUID.randomUUID(), TransactionType.INCOME, CURRENT_USER_ID);
+            result.setDate(LocalDate.now());
+            given(repository.save(any())).willReturn(result);
 
-            given(repository.save(any(Transaction.class))).willReturn(txWithToday);
+            service.createTransaction(req);
 
-            // When
-            TransactionResponse response = service.createTransaction(request);
-
-            // Then：驗證傳給 Repository 的 Entity 已經設定了今天日期
-            then(repository).should().save(transactionCaptor.capture());
-            Transaction captured = transactionCaptor.getValue();
-
-            assertThat(captured.getDate()).isEqualTo(LocalDate.now());
-            assertThat(response.getDate()).isEqualTo(LocalDate.now());
+            then(repository).should().save(txCaptor.capture());
+            assertThat(txCaptor.getValue().getDate()).isEqualTo(LocalDate.now());
         }
 
         @Test
-        @DisplayName("note 為 null 也能正常儲存")
-        void create_withNullNote_savesSuccessfully() {
-            // Given
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("300"));
-            request.setNote(null);
-            request.setDate(LocalDate.now());
+        @DisplayName("指定自己的 category，成功關聯")
+        void create_withOwnedCategory_linksCategory() {
+            UUID catId = UUID.randomUUID();
+            Category category = categoryWith(catId, CURRENT_USER_ID);
 
-            Transaction txNoNote = new Transaction();
-            txNoNote.setId(UUID.randomUUID());
-            txNoNote.setAmount(new BigDecimal("300"));
-            txNoNote.setNote(null);
-            txNoNote.setDate(LocalDate.now());
+            TransactionRequest req = incomeRequest();
+            req.setCategoryId(catId);
 
-            given(repository.save(any(Transaction.class))).willReturn(txNoNote);
+            Transaction result = txEntity(UUID.randomUUID(), TransactionType.INCOME, CURRENT_USER_ID);
+            result.setCategory(category);
+            given(categoryRepository.findById(catId)).willReturn(Optional.of(category));
+            given(repository.save(any())).willReturn(result);
 
-            // When
-            TransactionResponse response = service.createTransaction(request);
+            service.createTransaction(req);
 
-            // Then
-            then(repository).should().save(transactionCaptor.capture());
-            assertThat(transactionCaptor.getValue().getNote()).isNull();
-            assertThat(response.getNote()).isNull();
+            then(repository).should().save(txCaptor.capture());
+            assertThat(txCaptor.getValue().getCategory().getId()).isEqualTo(catId);
         }
 
         @Test
-        @DisplayName("Repository 的 save 方法只被呼叫一次")
-        void create_callsSaveExactlyOnce() {
-            // Given
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(BigDecimal.TEN);
-            request.setDate(LocalDate.now());
+        @DisplayName("指定他人的 category，拋出 IllegalArgumentException 且不儲存")
+        void create_withOtherUserCategory_throws() {
+            UUID catId = UUID.randomUUID();
+            given(categoryRepository.findById(catId))
+                    .willReturn(Optional.of(categoryWith(catId, OTHER_USER_ID)));
 
-            given(repository.save(any(Transaction.class))).willReturn(savedTx);
+            TransactionRequest req = incomeRequest();
+            req.setCategoryId(catId);
 
-            // When
-            service.createTransaction(request);
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("無權");
 
-            // Then
-            then(repository).should(times(1)).save(any(Transaction.class));
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("指定自己的 account，成功關聯")
+        void create_withOwnedAccount_linksAccount() {
+            UUID accId = UUID.randomUUID();
+            Account account = accountWith(accId, CURRENT_USER_ID);
+
+            TransactionRequest req = incomeRequest();
+            req.setAccountId(accId);
+
+            Transaction result = txEntity(UUID.randomUUID(), TransactionType.INCOME, CURRENT_USER_ID);
+            result.setAccount(account);
+            given(accountRepository.findById(accId)).willReturn(Optional.of(account));
+            given(repository.save(any())).willReturn(result);
+
+            service.createTransaction(req);
+
+            then(repository).should().save(txCaptor.capture());
+            assertThat(txCaptor.getValue().getAccount().getId()).isEqualTo(accId);
+        }
+
+        @Test
+        @DisplayName("指定他人的 account，拋出 IllegalArgumentException 且不儲存")
+        void create_withOtherUserAccount_throws() {
+            UUID accId = UUID.randomUUID();
+            given(accountRepository.findById(accId))
+                    .willReturn(Optional.of(accountWith(accId, OTHER_USER_ID)));
+
+            TransactionRequest req = incomeRequest();
+            req.setAccountId(accId);
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("無權");
+
+            then(repository).should(never()).save(any());
         }
     }
 
-    // Read 單筆
+    // ─────────────────────────────────────────────────────────────────────────
+    // createTransaction — TRANSFER
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("getTransaction (查詢單筆)")
-    class GetTransactionTests {
+    @DisplayName("createTransaction（轉帳）")
+    class CreateTransferTransaction {
 
         @Test
-        @DisplayName("查詢存在的 ID，回傳正確 Response")
-        void getOne_existingId_returnsCorrectResponse() {
-            // Given
-            given(repository.findById(txId)).willReturn(Optional.of(savedTx));
+        @DisplayName("成功建立 TRANSFER_OUT + TRANSFER_IN 一對，共用同一個 transferGroupId")
+        void createTransfer_happyPath_createsBothRecordsWithSameGroupId() {
+            UUID fromId = UUID.randomUUID();
+            UUID toId   = UUID.randomUUID();
+            Account fromAccount = accountWith(fromId, CURRENT_USER_ID);
+            Account toAccount   = accountWith(toId,   CURRENT_USER_ID);
 
-            // When
+            given(accountRepository.findById(fromId)).willReturn(Optional.of(fromAccount));
+            given(accountRepository.findById(toId)).willReturn(Optional.of(toAccount));
+
+            UUID groupId   = UUID.randomUUID();
+            Transaction inResult  = txEntity(UUID.randomUUID(), TransactionType.TRANSFER_IN,  CURRENT_USER_ID);
+            Transaction outResult = txEntity(UUID.randomUUID(), TransactionType.TRANSFER_OUT, CURRENT_USER_ID);
+            inResult.setTransferGroupId(groupId);
+            outResult.setTransferGroupId(groupId);
+            outResult.setAccount(fromAccount);
+            given(repository.save(any())).willReturn(inResult, outResult);
+
+            TransactionResponse response = service.createTransaction(transferRequest(fromId, toId));
+
+            // save 被呼叫 2 次
+            then(repository).should(times(2)).save(txCaptor.capture());
+            List<Transaction> saved = txCaptor.getAllValues();
+
+            assertThat(saved).extracting(Transaction::getType)
+                    .containsExactlyInAnyOrder(TransactionType.TRANSFER_IN, TransactionType.TRANSFER_OUT);
+
+            // 兩筆使用同一個 groupId
+            assertThat(saved.get(0).getTransferGroupId())
+                    .isEqualTo(saved.get(1).getTransferGroupId());
+
+            // Response 帶目標帳戶資訊
+            assertThat(response.getToAccountId()).isEqualTo(toId);
+        }
+
+        @Test
+        @DisplayName("未提供來源帳戶（accountId = null），拋出 IllegalArgumentException")
+        void createTransfer_missingFromAccount_throws() {
+            TransactionRequest req = new TransactionRequest();
+            req.setType(TransactionType.TRANSFER_OUT);
+            req.setAmount(new BigDecimal("100"));
+            req.setToAccountId(UUID.randomUUID());
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("來源帳戶");
+        }
+
+        @Test
+        @DisplayName("未提供目標帳戶（toAccountId = null），拋出 IllegalArgumentException")
+        void createTransfer_missingToAccount_throws() {
+            TransactionRequest req = new TransactionRequest();
+            req.setType(TransactionType.TRANSFER_OUT);
+            req.setAmount(new BigDecimal("100"));
+            req.setAccountId(UUID.randomUUID());
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("目標帳戶");
+        }
+
+        @Test
+        @DisplayName("來源帳戶與目標帳戶相同，拋出 IllegalArgumentException")
+        void createTransfer_sameAccount_throws() {
+            UUID sameId = UUID.randomUUID();
+            assertThatThrownBy(() -> service.createTransaction(transferRequest(sameId, sameId)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("相同");
+        }
+
+        @Test
+        @DisplayName("來源帳戶屬於他人，拋出 IllegalArgumentException 且不儲存")
+        void createTransfer_fromAccountOtherUser_throws() {
+            UUID fromId = UUID.randomUUID();
+            UUID toId   = UUID.randomUUID();
+            given(accountRepository.findById(fromId))
+                    .willReturn(Optional.of(accountWith(fromId, OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> service.createTransaction(transferRequest(fromId, toId)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("無權");
+
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("目標帳戶屬於他人，拋出 IllegalArgumentException 且不儲存")
+        void createTransfer_toAccountOtherUser_throws() {
+            UUID fromId = UUID.randomUUID();
+            UUID toId   = UUID.randomUUID();
+            given(accountRepository.findById(fromId))
+                    .willReturn(Optional.of(accountWith(fromId, CURRENT_USER_ID)));
+            given(accountRepository.findById(toId))
+                    .willReturn(Optional.of(accountWith(toId, OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> service.createTransaction(transferRequest(fromId, toId)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("無權");
+
+            then(repository).should(never()).save(any());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // getTransaction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("getTransaction（查詢單筆）")
+    class GetTransaction {
+
+        @Test
+        @DisplayName("查詢自己的交易，回傳正確 Response")
+        void getOne_ownedByCurrentUser_returnsResponse() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.INCOME, CURRENT_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+
             TransactionResponse response = service.getTransaction(txId);
 
-            // Then
             assertThat(response.getId()).isEqualTo(txId);
-            assertThat(response.getAmount()).isEqualByComparingTo("1000");
-            assertThat(response.getNote()).isEqualTo("薪水");
-            assertThat(response.getDate()).isEqualTo(LocalDate.of(2026, 2, 15));
+        }
 
-            then(repository).should().findById(txId);
+        @Test
+        @DisplayName("查詢他人的交易，拋出 ResourceNotFoundException（安全遮蔽，不洩漏存在性）")
+        void getOne_ownedByOtherUser_throwsResourceNotFoundException() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.INCOME, OTHER_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+
+            assertThatThrownBy(() -> service.getTransaction(txId))
+                    .isInstanceOf(ResourceNotFoundException.class);
         }
 
         @Test
         @DisplayName("查詢不存在的 ID，拋出 ResourceNotFoundException")
-        void getOne_nonExistingId_throwsResourceNotFoundException() {
-            // Given
+        void getOne_notFound_throws() {
             UUID unknownId = UUID.randomUUID();
             given(repository.findById(unknownId)).willReturn(Optional.empty());
 
-            // When & Then
             assertThatThrownBy(() -> service.getTransaction(unknownId))
                     .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining(unknownId.toString())
-                    .hasMessageContaining("找不到");
-
-            then(repository).should().findById(unknownId);
+                    .hasMessageContaining(unknownId.toString());
         }
     }
 
-    // Read 分頁列表
+    // ─────────────────────────────────────────────────────────────────────────
+    // getAllTransactions
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("getAllTransactions (分頁查詢)")
-    class GetAllTransactionsTests {
+    @DisplayName("getAllTransactions（分頁列表）")
+    class GetAllTransactions {
 
         @Test
-        @DisplayName("分頁查詢，回傳正確的 Page 物件")
-        void getAll_returnsPaginatedResult() {
-            // Given
+        @DisplayName("查詢時只帶入當前用戶 ID，不查詢全表")
+        void getAll_queriesCurrentUserOnly() {
             PageRequest pageable = PageRequest.of(0, 10);
-            Transaction tx2 = new Transaction();
-            tx2.setId(UUID.randomUUID());
-            tx2.setAmount(new BigDecimal("500"));
-            tx2.setDate(LocalDate.now());
+            given(repository.findByUserId(CURRENT_USER_ID, pageable))
+                    .willReturn(new PageImpl<>(List.of()));
 
-            Page<Transaction> fakePage = new PageImpl<>(
-                    List.of(savedTx, tx2),
-                    pageable,
-                    2  // total elements
-            );
+            service.getAllTransactions(pageable);
 
-            given(repository.findAll(pageable)).willReturn(fakePage);
-
-            // When
-            Page<TransactionResponse> result = service.getAllTransactions(pageable);
-
-            // Then
-            assertThat(result.getTotalElements()).isEqualTo(2);
-            assertThat(result.getTotalPages()).isEqualTo(1);
-            assertThat(result.getContent()).hasSize(2);
-            assertThat(result.getContent().get(0).getId()).isEqualTo(savedTx.getId());
-
-            then(repository).should().findAll(pageable);
+            then(repository).should().findByUserId(CURRENT_USER_ID, pageable);
+            then(repository).should(never()).findAll(pageable);
         }
 
         @Test
-        @DisplayName("查詢空結果，回傳空 Page")
+        @DisplayName("無資料時回傳空 Page")
         void getAll_emptyResult_returnsEmptyPage() {
-            // Given
             PageRequest pageable = PageRequest.of(0, 10);
-            Page<Transaction> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+            given(repository.findByUserId(CURRENT_USER_ID, pageable))
+                    .willReturn(new PageImpl<>(List.of(), pageable, 0));
 
-            given(repository.findAll(pageable)).willReturn(emptyPage);
-
-            // When
             Page<TransactionResponse> result = service.getAllTransactions(pageable);
 
-            // Then
             assertThat(result.getTotalElements()).isZero();
             assertThat(result.getContent()).isEmpty();
         }
     }
 
-    // Update
+    // ─────────────────────────────────────────────────────────────────────────
+    // updateTransaction
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("updateTransaction")
-    class UpdateTransactionTests {
+    @DisplayName("updateTransaction（更新）")
+    class UpdateTransaction {
 
         @Test
-        @DisplayName("正常更新，所有欄位都被更新並回傳正確 Response")
-        void update_existingId_updatesAllFieldsAndReturnsResponse() {
-            // Given
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("999"));
-            request.setNote("修正金額");
-            request.setDate(LocalDate.of(2026, 3, 1));
+        @DisplayName("正常更新欄位並儲存")
+        void update_happyPath_updatesFields() {
+            UUID txId = UUID.randomUUID();
+            Transaction existing = txEntity(txId, TransactionType.INCOME, CURRENT_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(existing));
+            given(repository.save(any())).willReturn(existing);
 
-            Transaction updatedTx = new Transaction();
-            updatedTx.setId(txId);
-            updatedTx.setAmount(new BigDecimal("999"));
-            updatedTx.setNote("修正金額");
-            updatedTx.setDate(LocalDate.of(2026, 3, 1));
+            TransactionRequest req = new TransactionRequest();
+            req.setType(TransactionType.EXPENSE);
+            req.setAmount(new BigDecimal("999"));
+            req.setNote("修改");
+            req.setDate(LocalDate.of(2026, 4, 1));
 
-            given(repository.findById(txId)).willReturn(Optional.of(savedTx));
-            given(repository.save(any(Transaction.class))).willReturn(updatedTx);
+            service.updateTransaction(txId, req);
 
-            // When
-            TransactionResponse response = service.updateTransaction(txId, request);
-
-            // Then：驗證傳給 save 的物件已更新
-            then(repository).should().save(transactionCaptor.capture());
-            Transaction captured = transactionCaptor.getValue();
-
-            assertThat(captured.getId()).isEqualTo(txId);  // ID 不變
+            then(repository).should().save(txCaptor.capture());
+            Transaction captured = txCaptor.getValue();
             assertThat(captured.getAmount()).isEqualByComparingTo("999");
-            assertThat(captured.getNote()).isEqualTo("修正金額");
-            assertThat(captured.getDate()).isEqualTo(LocalDate.of(2026, 3, 1));
-
-            // Then：驗證回傳的 Response
-            assertThat(response.getId()).isEqualTo(txId);
-            assertThat(response.getAmount()).isEqualByComparingTo("999");
-            assertThat(response.getNote()).isEqualTo("修正金額");
+            assertThat(captured.getNote()).isEqualTo("修改");
+            assertThat(captured.getDate()).isEqualTo(LocalDate.of(2026, 4, 1));
         }
 
         @Test
-        @DisplayName("更新時 date 為 null，不覆蓋原本的日期")
+        @DisplayName("date 為 null 時，保留原本日期不覆蓋")
         void update_withNullDate_keepsOriginalDate() {
-            // Given
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("800"));
-            request.setNote("只改金額");
-            request.setDate(null);  // 不想改日期
+            UUID txId = UUID.randomUUID();
+            Transaction existing = txEntity(txId, TransactionType.INCOME, CURRENT_USER_ID);
+            LocalDate originalDate = existing.getDate();
+            given(repository.findById(txId)).willReturn(Optional.of(existing));
+            given(repository.save(any())).willReturn(existing);
 
-            given(repository.findById(txId)).willReturn(Optional.of(savedTx));
-            given(repository.save(any(Transaction.class))).willReturn(savedTx);
+            TransactionRequest req = new TransactionRequest();
+            req.setType(TransactionType.INCOME);
+            req.setAmount(new BigDecimal("100"));
+            req.setDate(null);
 
-            // When
-            service.updateTransaction(txId, request);
+            service.updateTransaction(txId, req);
 
-            // Then：驗證日期沒被改掉
-            then(repository).should().save(transactionCaptor.capture());
-            Transaction captured = transactionCaptor.getValue();
-
-            assertThat(captured.getDate()).isEqualTo(LocalDate.of(2026, 2, 15));  // 保持原本日期
+            then(repository).should().save(txCaptor.capture());
+            assertThat(txCaptor.getValue().getDate()).isEqualTo(originalDate);
         }
 
         @Test
-        @DisplayName("更新不存在的 ID，拋出 ResourceNotFoundException")
-        void update_nonExistingId_throwsResourceNotFoundException() {
-            // Given
-            UUID unknownId = UUID.randomUUID();
-            TransactionRequest request = new TransactionRequest();
-            request.setAmount(new BigDecimal("100"));
+        @DisplayName("嘗試編輯 TRANSFER_OUT，拋出 IllegalArgumentException 且不儲存")
+        void update_transferOut_throws() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.TRANSFER_OUT, CURRENT_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
 
+            assertThatThrownBy(() -> service.updateTransaction(txId, incomeRequest()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("轉帳");
+
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("嘗試編輯 TRANSFER_IN，拋出 IllegalArgumentException 且不儲存")
+        void update_transferIn_throws() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.TRANSFER_IN, CURRENT_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+
+            assertThatThrownBy(() -> service.updateTransaction(txId, incomeRequest()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("轉帳");
+
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("更新他人的交易，拋出 ResourceNotFoundException 且不儲存")
+        void update_ownedByOtherUser_throws() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.INCOME, OTHER_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+
+            assertThatThrownBy(() -> service.updateTransaction(txId, incomeRequest()))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("更新不存在的交易，拋出 ResourceNotFoundException")
+        void update_notFound_throws() {
+            UUID unknownId = UUID.randomUUID();
             given(repository.findById(unknownId)).willReturn(Optional.empty());
 
-            // When & Then
-            assertThatThrownBy(() -> service.updateTransaction(unknownId, request))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining(unknownId.toString());
-
-            then(repository).should().findById(unknownId);
-            then(repository).should(never()).save(any(Transaction.class));
+            assertThatThrownBy(() -> service.updateTransaction(unknownId, incomeRequest()))
+                    .isInstanceOf(ResourceNotFoundException.class);
         }
     }
 
-    // Delete
+    // ─────────────────────────────────────────────────────────────────────────
+    // deleteTransaction
+    // ─────────────────────────────────────────────────────────────────────────
+
     @Nested
-    @DisplayName("deleteTransaction")
-    class DeleteTransactionTests {
+    @DisplayName("deleteTransaction（刪除）")
+    class DeleteTransaction {
 
         @Test
-        @DisplayName("刪除存在的 ID，Repository 的 deleteById 被呼叫一次")
-        void delete_existingId_callsDeleteById() {
-            // Given
-            given(repository.existsById(txId)).willReturn(true);
-            willDoNothing().given(repository).deleteById(txId);
+        @DisplayName("刪除一般交易，只呼叫 deleteById，不查詢配對記錄")
+        void delete_normalTx_deletesById() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.EXPENSE, CURRENT_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
 
-            // When
             service.deleteTransaction(txId);
 
-            // Then
-            then(repository).should().existsById(txId);
+            then(repository).should().deleteById(txId);
+            then(repository).should(never()).findByTransferGroupIdAndIdNot(any(), any());
+        }
+
+        @Test
+        @DisplayName("刪除 TRANSFER_OUT，同時串聯刪除配對的 TRANSFER_IN")
+        void delete_transferOut_alsoDeletesPairedRecord() {
+            UUID txId     = UUID.randomUUID();
+            UUID groupId  = UUID.randomUUID();
+            UUID pairedId = UUID.randomUUID();
+
+            Transaction tx = txEntity(txId, TransactionType.TRANSFER_OUT, CURRENT_USER_ID);
+            tx.setTransferGroupId(groupId);
+
+            Transaction paired = txEntity(pairedId, TransactionType.TRANSFER_IN, CURRENT_USER_ID);
+            paired.setTransferGroupId(groupId);
+
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+            given(repository.findByTransferGroupIdAndIdNot(groupId, txId))
+                    .willReturn(Optional.of(paired));
+
+            service.deleteTransaction(txId);
+
+            then(repository).should().delete(paired);
             then(repository).should().deleteById(txId);
         }
 
         @Test
-        @DisplayName("刪除不存在的 ID，拋出 ResourceNotFoundException 且不呼叫 deleteById")
-        void delete_nonExistingId_throwsExceptionWithoutCallingDelete() {
-            // Given
+        @DisplayName("刪除他人的交易，拋出 ResourceNotFoundException 且不執行刪除")
+        void delete_ownedByOtherUser_throws() {
+            UUID txId = UUID.randomUUID();
+            Transaction tx = txEntity(txId, TransactionType.INCOME, OTHER_USER_ID);
+            given(repository.findById(txId)).willReturn(Optional.of(tx));
+
+            assertThatThrownBy(() -> service.deleteTransaction(txId))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            then(repository).should(never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("刪除不存在的交易，拋出 ResourceNotFoundException")
+        void delete_notFound_throws() {
             UUID unknownId = UUID.randomUUID();
-            given(repository.existsById(unknownId)).willReturn(false);
+            given(repository.findById(unknownId)).willReturn(Optional.empty());
 
-            // When & Then
             assertThatThrownBy(() -> service.deleteTransaction(unknownId))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining(unknownId.toString());
-
-            then(repository).should().existsById(unknownId);
-            then(repository).should(never()).deleteById(any());  // 確認完全沒呼叫
+                    .isInstanceOf(ResourceNotFoundException.class);
         }
     }
 }
