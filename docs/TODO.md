@@ -61,6 +61,8 @@
 - [ ] 引入 Flyway、將現有 schema 轉為 `V1__init.sql`、`ddl-auto: validate`
 
 ### 4. 測試補完
+- [x] AuthServiceTest、AccountServiceTest、CategoryServiceTest、StatisticsServiceTest、PriceAlertServiceTest、AssetSnapshotServiceTest（共 70 個後端測試）
+- [x] 前端測試基礎設施（Vitest + jsdom）：utils、store、api 共 52 個測試
 - [ ] PriceServiceTest
 
 ---
