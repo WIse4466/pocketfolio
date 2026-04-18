@@ -192,7 +192,7 @@ public class PriceService {
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.warn("價格更新排程被中斷");
+                    log.warn("價格更新排程被中斷，已更新 {}/{} 筆", successCount, totalAssets);
                     return successCount;
                 } catch (Exception e) {
                     log.error("更新資產價格失敗: {} - {}", asset.getSymbol(), e.getMessage());
