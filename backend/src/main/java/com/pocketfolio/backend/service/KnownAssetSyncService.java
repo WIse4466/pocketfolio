@@ -68,8 +68,9 @@ public class KnownAssetSyncService {
             toSave.add(ka);
         }
 
-        // delete + saveAll 在同一個 @Transactional，任一失敗則全部 rollback
+        // flush 確保 DELETE 先送達 DB，再執行 INSERT，避免 unique constraint 衝突
         knownAssetRepository.deleteByAssetType("STOCK_TW");
+        knownAssetRepository.flush();
         knownAssetRepository.saveAll(toSave);
         log.info("TWSE 同步完成：{} 筆", toSave.size());
         return toSave.size();
@@ -105,6 +106,7 @@ public class KnownAssetSyncService {
         }
 
         knownAssetRepository.deleteByAssetType("STOCK_TWO");
+        knownAssetRepository.flush();
         knownAssetRepository.saveAll(toSave);
         log.info("TPEX 同步完成：{} 筆", toSave.size());
         return toSave.size();
@@ -152,6 +154,7 @@ public class KnownAssetSyncService {
         }
 
         knownAssetRepository.deleteByAssetType("CRYPTO");
+        knownAssetRepository.flush();
         knownAssetRepository.saveAll(toSave);
         log.info("CoinGecko 同步完成：{} 筆", toSave.size());
         return toSave.size();
