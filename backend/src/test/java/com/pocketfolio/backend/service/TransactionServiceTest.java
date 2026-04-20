@@ -5,6 +5,7 @@ import com.pocketfolio.backend.dto.TransactionResponse;
 import com.pocketfolio.backend.entity.*;
 import com.pocketfolio.backend.exception.ResourceNotFoundException;
 import com.pocketfolio.backend.repository.AccountRepository;
+import com.pocketfolio.backend.repository.AssetRepository;
 import com.pocketfolio.backend.repository.CategoryRepository;
 import com.pocketfolio.backend.repository.TransactionRepository;
 import org.junit.jupiter.api.*;
@@ -38,6 +39,7 @@ class TransactionServiceTest {
     @Mock private TransactionRepository repository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private AccountRepository accountRepository;
+    @Mock private AssetRepository assetRepository;
 
     @InjectMocks private TransactionService service;
 
@@ -68,13 +70,36 @@ class TransactionServiceTest {
     }
 
     private Account accountWith(UUID id, UUID ownerId) {
+        return accountWith(id, ownerId, AccountType.CASH);
+    }
+
+    private Account accountWith(UUID id, UUID ownerId, AccountType type) {
         Account a = new Account();
         a.setId(id);
         a.setName("帳戶-" + id.toString().substring(0, 4));
-        a.setType(AccountType.CASH);
+        a.setType(type);
         a.setInitialBalance(BigDecimal.ZERO);
         a.setUser(userWith(ownerId));
         return a;
+    }
+
+    private Asset assetWith(UUID id, UUID ownerId, Account account) {
+        Asset asset = new Asset();
+        asset.setId(id);
+        asset.setSymbol("2330.TW");
+        asset.setName("台積電");
+        asset.setType(AssetType.STOCK);
+        asset.setQuantity(new BigDecimal("10"));
+        asset.setCostPrice(new BigDecimal("800"));
+        asset.setCurrentPrice(new BigDecimal("800"));
+        asset.setAccount(account);
+        asset.setUser(userWith(ownerId));
+        return asset;
+    }
+
+    private TransactionRequest transferToInvestmentRequest(UUID fromId, UUID toId) {
+        TransactionRequest req = transferRequest(fromId, toId);
+        return req;
     }
 
     private Category categoryWith(UUID id, UUID ownerId) {
@@ -590,6 +615,178 @@ class TransactionServiceTest {
 
             assertThatThrownBy(() -> service.deleteTransaction(unknownId))
                     .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // createTransfer — 資產連結
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("createTransfer（資產連結）")
+    class CreateTransferWithAssetLink {
+
+        private UUID fromId;
+        private UUID toId;
+        private Account fromAccount;
+        private Account toAccount;
+
+        @BeforeEach
+        void setUp() {
+            fromId = UUID.randomUUID();
+            toId   = UUID.randomUUID();
+            fromAccount = accountWith(fromId, CURRENT_USER_ID, AccountType.CASH);
+            toAccount   = accountWith(toId,   CURRENT_USER_ID, AccountType.INVESTMENT);
+
+            given(accountRepository.findById(fromId)).willReturn(Optional.of(fromAccount));
+            given(accountRepository.findById(toId)).willReturn(Optional.of(toAccount));
+
+            UUID groupId   = UUID.randomUUID();
+            Transaction inResult  = txEntity(UUID.randomUUID(), TransactionType.TRANSFER_IN,  CURRENT_USER_ID);
+            Transaction outResult = txEntity(UUID.randomUUID(), TransactionType.TRANSFER_OUT, CURRENT_USER_ID);
+            inResult.setTransferGroupId(groupId);
+            outResult.setTransferGroupId(groupId);
+            outResult.setAccount(fromAccount);
+            given(repository.save(any())).willReturn(inResult, outResult);
+        }
+
+        @Test
+        @DisplayName("目標帳戶非 INVESTMENT，不呼叫 assetRepository")
+        void linkAsset_nonInvestmentAccount_noAssetOperation() {
+            Account cashTo = accountWith(toId, CURRENT_USER_ID, AccountType.CASH);
+            given(accountRepository.findById(toId)).willReturn(Optional.of(cashTo));
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetSymbol("2330.TW");
+            req.setAssetQuantity(new BigDecimal("10"));
+
+            service.createTransaction(req);
+
+            then(assetRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("帶有 assetId → 加倉已有資產，更新數量與加權平均成本")
+        void linkAsset_withAssetId_updatesQuantityAndWeightedCost() {
+            UUID assetId = UUID.randomUUID();
+            Asset existing = assetWith(assetId, CURRENT_USER_ID, toAccount);
+            // 原本 10 股，成本 800
+            given(assetRepository.findById(assetId)).willReturn(Optional.of(existing));
+            given(assetRepository.save(any(Asset.class))).willReturn(existing);
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetId(assetId);
+            req.setAssetQuantity(new BigDecimal("10"));
+            req.setAssetCostPrice(new BigDecimal("900")); // 單價 900，10 股共 9000
+
+            service.createTransaction(req);
+
+            ArgumentCaptor<Asset> assetCaptor = ArgumentCaptor.forClass(Asset.class);
+            then(assetRepository).should().save(assetCaptor.capture());
+            Asset saved = assetCaptor.getValue();
+
+            assertThat(saved.getQuantity()).isEqualByComparingTo("20");
+            // 加權平均：(10×800 + 10×900) / 20 = 850
+            assertThat(saved.getCostPrice()).isEqualByComparingTo("850");
+        }
+
+        @Test
+        @DisplayName("帶有 assetSymbol → 建立新資產")
+        void linkAsset_withNewSymbol_createsAsset() {
+            given(assetRepository.existsByUserIdAndAccountIdAndSymbol(any(), any(), any())).willReturn(false);
+            given(assetRepository.save(any(Asset.class))).willAnswer(inv -> inv.getArgument(0));
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetSymbol("nvda");
+            req.setAssetName("NVIDIA");
+            req.setAssetType(AssetType.STOCK);
+            req.setAssetQuantity(new BigDecimal("5"));
+            req.setAssetCostPrice(new BigDecimal("1000")); // 單價 1000
+
+            service.createTransaction(req);
+
+            ArgumentCaptor<Asset> assetCaptor = ArgumentCaptor.forClass(Asset.class);
+            then(assetRepository).should().save(assetCaptor.capture());
+            Asset saved = assetCaptor.getValue();
+
+            assertThat(saved.getSymbol()).isEqualTo("NVDA");
+            assertThat(saved.getQuantity()).isEqualByComparingTo("5");
+            assertThat(saved.getCostPrice()).isEqualByComparingTo("1000");
+        }
+
+        @Test
+        @DisplayName("assetQuantity 為 0，拋出 IllegalArgumentException")
+        void linkAsset_zeroQuantity_throws() {
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetSymbol("NVDA");
+            req.setAssetQuantity(BigDecimal.ZERO);
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("數量");
+        }
+
+        @Test
+        @DisplayName("assetId 不存在，拋出 ResourceNotFoundException")
+        void linkAsset_assetIdNotFound_throws() {
+            UUID unknownAssetId = UUID.randomUUID();
+            given(assetRepository.findById(unknownAssetId)).willReturn(Optional.empty());
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetId(unknownAssetId);
+            req.setAssetQuantity(new BigDecimal("5"));
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("assetId 屬於他人，拋出 IllegalArgumentException")
+        void linkAsset_assetOwnedByOther_throws() {
+            UUID assetId = UUID.randomUUID();
+            Asset otherAsset = assetWith(assetId, OTHER_USER_ID, toAccount);
+            given(assetRepository.findById(assetId)).willReturn(Optional.of(otherAsset));
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetId(assetId);
+            req.setAssetQuantity(new BigDecimal("5"));
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("無權");
+        }
+
+        @Test
+        @DisplayName("assetId 屬於其他帳戶，拋出 IllegalArgumentException")
+        void linkAsset_assetInDifferentAccount_throws() {
+            UUID assetId = UUID.randomUUID();
+            Account otherAccount = accountWith(UUID.randomUUID(), CURRENT_USER_ID, AccountType.INVESTMENT);
+            Asset wrongAccountAsset = assetWith(assetId, CURRENT_USER_ID, otherAccount);
+            given(assetRepository.findById(assetId)).willReturn(Optional.of(wrongAccountAsset));
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetId(assetId);
+            req.setAssetQuantity(new BigDecimal("5"));
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("不屬於");
+        }
+
+        @Test
+        @DisplayName("新資產代號重複，拋出 IllegalArgumentException")
+        void linkAsset_duplicateSymbol_throws() {
+            given(assetRepository.existsByUserIdAndAccountIdAndSymbol(CURRENT_USER_ID, toId, "NVDA"))
+                    .willReturn(true);
+
+            TransactionRequest req = transferRequest(fromId, toId);
+            req.setAssetSymbol("NVDA");
+            req.setAssetQuantity(new BigDecimal("5"));
+            req.setAssetCostPrice(new BigDecimal("1000"));
+
+            assertThatThrownBy(() -> service.createTransaction(req))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("加倉");
         }
     }
 }

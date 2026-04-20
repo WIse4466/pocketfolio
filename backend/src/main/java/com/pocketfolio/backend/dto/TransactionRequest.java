@@ -1,5 +1,6 @@
 package com.pocketfolio.backend.dto;
 
+import com.pocketfolio.backend.entity.AssetType;
 import com.pocketfolio.backend.entity.TransactionType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -28,4 +29,13 @@ public class TransactionRequest {
 
     // 目標帳戶（TRANSFER_OUT 類型使用）
     private UUID toAccountId;
+
+    // 資產連結（TRANSFER_OUT 轉入 INVESTMENT 帳戶時選填）
+    private UUID assetId;            // 現有資產 ID → 加倉
+    private AssetType assetType;     // 新資產類型（建立新資產時使用）
+    private String assetSymbol;      // 新資產代號
+    private String assetName;        // 新資產名稱
+    private BigDecimal assetQuantity;    // 數量（加倉或新增皆用）
+    private BigDecimal assetCostPrice;   // 單價（加倉或新增皆用；amount 由前端以 quantity × unitPrice 帶入）
+    private String assetNote;
 }
