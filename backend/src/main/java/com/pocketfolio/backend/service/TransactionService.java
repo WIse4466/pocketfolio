@@ -3,12 +3,16 @@ package com.pocketfolio.backend.service;
 import com.pocketfolio.backend.dto.TransactionRequest;
 import com.pocketfolio.backend.dto.TransactionResponse;
 import com.pocketfolio.backend.entity.Account;
+import com.pocketfolio.backend.entity.AccountType;
+import com.pocketfolio.backend.entity.Asset;
+import com.pocketfolio.backend.entity.AssetType;
 import com.pocketfolio.backend.entity.Category;
 import com.pocketfolio.backend.entity.Transaction;
 import com.pocketfolio.backend.entity.TransactionType;
 import com.pocketfolio.backend.entity.User;
 import com.pocketfolio.backend.exception.ResourceNotFoundException;
 import com.pocketfolio.backend.repository.AccountRepository;
+import com.pocketfolio.backend.repository.AssetRepository;
 import com.pocketfolio.backend.repository.CategoryRepository;
 import com.pocketfolio.backend.repository.TransactionRepository;
 import com.pocketfolio.backend.security.SecurityUtil;
@@ -18,6 +22,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -28,6 +34,7 @@ public class TransactionService {
     private final TransactionRepository repository;
     private final CategoryRepository categoryRepository;
     private final AccountRepository accountRepository;
+    private final AssetRepository assetRepository;
 
     //Create
     @Transactional
@@ -103,11 +110,75 @@ public class TransactionService {
         repository.save(in);
         Transaction savedOut = repository.save(out);
 
+        linkAssetIfNeeded(request, toAccount, currentUserId);
+
         // Response 以 TRANSFER_OUT 為主，附帶目標帳戶資訊
         TransactionResponse response = toResponse(savedOut);
         response.setToAccountId(toAccount.getId());
         response.setToAccountName(toAccount.getName());
         return response;
+    }
+
+    // 資產連結：TRANSFER_OUT 轉入 INVESTMENT 帳戶時，同步更新或建立資產
+    private void linkAssetIfNeeded(TransactionRequest request, Account toAccount, UUID userId) {
+        if (toAccount.getType() != AccountType.INVESTMENT) return;
+
+        boolean hasExisting = request.getAssetId() != null;
+        boolean hasNew = request.getAssetSymbol() != null && !request.getAssetSymbol().isBlank();
+        if (!hasExisting && !hasNew) return;
+
+        if (request.getAssetQuantity() == null || request.getAssetQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("加倉數量必須大於 0");
+        }
+
+        User user = new User();
+        user.setId(userId);
+
+        if (hasExisting) {
+            Asset asset = assetRepository.findById(request.getAssetId())
+                    .orElseThrow(() -> new ResourceNotFoundException("找不到資產"));
+            if (!asset.getUser().getId().equals(userId)) {
+                throw new IllegalArgumentException("無權操作此資產");
+            }
+            if (!asset.getAccount().getId().equals(toAccount.getId())) {
+                throw new IllegalArgumentException("資產不屬於目標帳戶");
+            }
+            BigDecimal unitCost = request.getAssetCostPrice();
+            if (unitCost == null || unitCost.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("單價必須大於 0");
+            }
+            BigDecimal addQty = request.getAssetQuantity();
+            BigDecimal oldQty = asset.getQuantity();
+            BigDecimal newQty = oldQty.add(addQty);
+            // 加權平均成本
+            BigDecimal newCostPrice = oldQty.multiply(asset.getCostPrice())
+                    .add(addQty.multiply(unitCost))
+                    .divide(newQty, 8, RoundingMode.HALF_UP);
+            asset.setQuantity(newQty);
+            asset.setCostPrice(newCostPrice);
+            assetRepository.save(asset);
+        } else {
+            String symbol = request.getAssetSymbol().toUpperCase();
+            if (assetRepository.existsByUserIdAndAccountIdAndSymbol(userId, toAccount.getId(), symbol)) {
+                throw new IllegalArgumentException(
+                        "目標帳戶已有代號為「" + symbol + "」的資產，請改用加倉功能");
+            }
+            BigDecimal unitCost = request.getAssetCostPrice();
+            if (unitCost == null || unitCost.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("單價必須大於 0");
+            }
+            Asset newAsset = new Asset();
+            newAsset.setAccount(toAccount);
+            newAsset.setUser(user);
+            newAsset.setType(request.getAssetType() != null ? request.getAssetType() : AssetType.STOCK);
+            newAsset.setSymbol(symbol);
+            newAsset.setName(request.getAssetName() != null ? request.getAssetName() : symbol);
+            newAsset.setQuantity(request.getAssetQuantity());
+            newAsset.setCostPrice(unitCost);
+            newAsset.setCurrentPrice(unitCost);
+            newAsset.setNote(request.getAssetNote());
+            assetRepository.save(newAsset);
+        }
     }
 
     //Read(單筆)

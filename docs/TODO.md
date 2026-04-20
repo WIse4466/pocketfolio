@@ -40,12 +40,24 @@
 
 ## 🔴 高優先級
 
-### 1. 轉帳連結資產（新分支：`feature/transfer-link-asset`）
+### 1. 轉帳連結資產（分支：`feature/transfer-link-asset`）
 **目標：** 在交易頁建立轉帳時，若目標帳戶是投資帳戶，可選擇連結既有資產（加倉）或建立新資產記錄。
-- [ ] 後端：`TransactionRequest` 加入選填 `assetId`（加倉）或新資產欄位
-- [ ] 後端：`TransactionService.createTransfer()` 若目標是 INVESTMENT 帳戶且帶有資產資訊，同步更新 / 建立資產
-- [ ] 前端：目標帳戶選擇後，若是 INVESTMENT 類型，動態顯示資產選擇器（現有資產 + 「新增資產」選項）
-- [ ] 單元測試覆蓋新邏輯
+- [x] 後端：`TransactionRequest` 加入選填 `assetId`（加倉）或新資產欄位
+- [x] 後端：`TransactionService.createTransfer()` 若目標是 INVESTMENT 帳戶且帶有資產資訊，同步更新 / 建立資產
+- [x] 前端：目標帳戶選擇後，若是 INVESTMENT 類型，動態顯示資產選擇器（現有資產 + 「新增資產」選項）
+- [x] 單元測試覆蓋新邏輯（8 個測試，TransactionServiceTest）
+
+### 2. 手動資產輸入（新分支：`feature/manual-asset-entry`）
+**目標：** 讓使用者可以輸入不在已知清單的資產（美股、非前 200 幣等）。
+- [ ] 資產管理頁 + 交易頁資產連結：AutoComplete 下方加「找不到資產？手動輸入」連結，切換為純文字欄位
+- [ ] 兩個頁面同步處理，保持 UX 一致
+
+### 3. 轉帳手續費（新分支：`feature/transfer-fee`）
+**目標：** 建立轉帳時可選填手續費，手續費自動記錄為一筆支出交易，與轉帳共用 `transferGroupId`。
+- [ ] 後端：`TransactionRequest` 加入選填 `fee`（金額）與 `feeCategoryId`
+- [ ] 後端：`TransactionService.createTransfer()` 若 `fee > 0`，額外建立一筆 EXPENSE 交易（同一 `transferGroupId`）
+- [ ] 前端：轉帳表單加手續費開關（預設關閉），開啟後顯示金額輸入與類別選擇（EXPENSE 類別）
+- [ ] 刪除轉帳時，一併刪除同 `transferGroupId` 的手續費記錄
 
 ---
 

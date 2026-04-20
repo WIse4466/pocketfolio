@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Table,
   Button,
@@ -9,6 +9,8 @@ import {
   InputNumber,
   DatePicker,
   Select,
+  AutoComplete,
+  Radio,
   message,
   Popconfirm,
   Tag,
@@ -20,14 +22,19 @@ import {
   DeleteOutlined,
   SearchOutlined,
   SwapOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { transactionApi } from '@/api/transaction.api';
 import { categoryApi } from '@/api/category.api';
 import { accountApi } from '@/api/account.api';
+import { assetApi } from '@/api/asset.api';
+import { priceApi } from '@/api/price.api';
+import { knownAssetApi, type KnownAssetResult, type KnownAssetType } from '@/api/knownAsset.api';
 import type { Transaction, TransactionRequest, TransactionType } from '@/types/transaction.types';
 import type { Category } from '@/types/category.types';
 import type { Account } from '@/types/account.types';
+import type { Asset } from '@/types/asset.types';
 import type { ColumnsType } from 'antd/es/table';
 import { formatCurrency, formatDate } from '@/utils/format';
 
@@ -42,6 +49,15 @@ const TransactionList = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedType, setSelectedType] = useState<TransactionType>('EXPENSE');
+  const [toAccountIsInvestment, setToAccountIsInvestment] = useState(false);
+  const [investmentAssets, setInvestmentAssets] = useState<Asset[]>([]);
+  const [assetLinkMode, setAssetLinkMode] = useState<'none' | 'existing' | 'new'>('none');
+  const [assetSearchMarket, setAssetSearchMarket] = useState<KnownAssetType>('STOCK_TW');
+  const [assetSearchOptions, setAssetSearchOptions] = useState<{ value: string; label: string; data: KnownAssetResult }[]>([]);
+  const [selectedAssetDisplay, setSelectedAssetDisplay] = useState<string | null>(null);
+  const [assetCurrentPrice, setAssetCurrentPrice] = useState<number | null>(null);
+  const [assetCurrentPriceLoading, setAssetCurrentPriceLoading] = useState(false);
+  const assetDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [form] = Form.useForm();
 
   // 篩選條件
@@ -92,9 +108,92 @@ const TransactionList = () => {
     }
   };
 
+  const resetAssetLinkState = () => {
+    setToAccountIsInvestment(false);
+    setInvestmentAssets([]);
+    setAssetLinkMode('none');
+    setAssetSearchMarket('STOCK_TW');
+    setAssetSearchOptions([]);
+    setSelectedAssetDisplay(null);
+    setAssetCurrentPrice(null);
+  };
+
+  const clearSelectedAsset = () => {
+    setSelectedAssetDisplay(null);
+    setAssetCurrentPrice(null);
+    setAssetSearchOptions([]);
+    form.setFieldsValue({ assetSymbol: undefined, assetName: undefined, _assetSearchInput: undefined });
+  };
+
+  const recalcTransferAmount = () => {
+    const qty: number | undefined = form.getFieldValue('assetQuantity');
+    const price: number | undefined = form.getFieldValue('assetCostPrice');
+    if (qty && price && qty > 0 && price > 0) {
+      form.setFieldValue('amount', parseFloat((qty * price).toFixed(2)));
+    }
+  };
+
+  const handleAssetSymbolSearch = useCallback((keyword: string) => {
+    if (keyword.length < 1) { setAssetSearchOptions([]); return; }
+    if (assetDebounceTimer.current) clearTimeout(assetDebounceTimer.current);
+    assetDebounceTimer.current = setTimeout(async () => {
+      try {
+        const results = await knownAssetApi.search(assetSearchMarket, keyword);
+        setAssetSearchOptions(results.map((r) => ({
+          value: r.symbol,
+          label: r.marketCapRank
+            ? `${r.displayCode}  ${r.name}  #${r.marketCapRank}`
+            : `${r.displayCode}  ${r.name}`,
+          data: r,
+        })));
+      } catch { /* 靜默忽略 */ }
+    }, 300);
+  }, [assetSearchMarket]);
+
+  const handleAssetSymbolSelect = useCallback(async (_value: string, option: { value: string; label: string; data: KnownAssetResult }) => {
+    const assetType = form.getFieldValue('assetType') ?? 'STOCK';
+    form.setFieldsValue({ assetSymbol: option.data.symbol, assetName: option.data.name });
+    setSelectedAssetDisplay(`${option.data.name}（${option.data.symbol}）`);
+    setAssetSearchOptions([]);
+    setAssetCurrentPrice(null);
+    setAssetCurrentPriceLoading(true);
+    try {
+      const data = await priceApi.getPrice(option.data.symbol, assetType);
+      setAssetCurrentPrice(data.price);
+    } catch {
+      // 查不到價格不影響主流程，靜默忽略
+    } finally {
+      setAssetCurrentPriceLoading(false);
+    }
+  }, [form]);
+
+  const handleToAccountChange = async (accountId: string) => {
+    const account = accounts.find((a) => a.id === accountId);
+    if (account?.type === 'INVESTMENT') {
+      setToAccountIsInvestment(true);
+      try {
+        const assets = await assetApi.getAccountAssets(accountId);
+        setInvestmentAssets(assets);
+      } catch {
+        setInvestmentAssets([]);
+      }
+    } else {
+      setToAccountIsInvestment(false);
+      setInvestmentAssets([]);
+    }
+    setAssetLinkMode('none');
+    form.setFieldValue('assetId', undefined);
+    form.setFieldValue('assetSymbol', undefined);
+    form.setFieldValue('assetName', undefined);
+    form.setFieldValue('assetQuantity', undefined);
+    form.setFieldValue('_assetSearchInput', undefined);
+    form.setFieldValue('_assetSearchMarket', 'STOCK_TW');
+  };
+
   const handleCreate = () => {
     setEditingTransaction(null);
     setSelectedType('EXPENSE');
+    resetAssetLinkState();
     form.resetFields();
     form.setFieldsValue({ type: 'EXPENSE', date: dayjs() });
     setModalVisible(true);
@@ -126,6 +225,18 @@ const TransactionList = () => {
       const requestData: TransactionRequest = {
         ...values,
         date: values.date.format('YYYY-MM-DD'),
+        // 不連結資產時清除相關欄位
+        ...(assetLinkMode === 'none' && {
+          assetId: undefined,
+          assetSymbol: undefined,
+          assetName: undefined,
+          assetType: undefined,
+          assetQuantity: undefined,
+          assetCostPrice: undefined,
+          assetNote: undefined,
+        }),
+        _assetSearchMarket: undefined,
+        _assetSearchInput: undefined,
       };
 
       if (editingTransaction) {
@@ -348,6 +459,7 @@ const TransactionList = () => {
                 setSelectedType(v);
                 form.setFieldValue('categoryId', undefined);
                 form.setFieldValue('toAccountId', undefined);
+                resetAssetLinkState();
               }}
               disabled={!!editingTransaction}
             >
@@ -406,19 +518,180 @@ const TransactionList = () => {
               name="toAccountId"
               rules={[{ required: true, message: '請選擇目標帳戶' }]}
             >
-              <Select placeholder="請選擇目標帳戶">
+              <Select placeholder="請選擇目標帳戶" onChange={handleToAccountChange}>
                 {accounts.map((acc) => (
                   <Select.Option key={acc.id} value={acc.id}>
                     {acc.name}
+                    {acc.type === 'INVESTMENT' && (
+                      <span style={{ color: '#1677ff', marginLeft: 6, fontSize: 12 }}>投資</span>
+                    )}
                   </Select.Option>
                 ))}
               </Select>
             </Form.Item>
           )}
 
+          {/* 資產連結（目標為投資帳戶時顯示） */}
+          {isTransfer && toAccountIsInvestment && (
+            <>
+              <Form.Item label="連結資產">
+                <Select
+                  value={assetLinkMode}
+                  onChange={(v) => setAssetLinkMode(v)}
+                >
+                  <Select.Option value="none">不連結資產</Select.Option>
+                  <Select.Option value="existing">加倉已有資產</Select.Option>
+                  <Select.Option value="new">建立新資產</Select.Option>
+                </Select>
+              </Form.Item>
+
+              {assetLinkMode === 'existing' && (
+                <>
+                  <Form.Item
+                    label="選擇資產"
+                    name="assetId"
+                    rules={[{ required: true, message: '請選擇資產' }]}
+                  >
+                    <Select
+                      placeholder="請選擇要加倉的資產"
+                      onChange={(id: string) => {
+                        const asset = investmentAssets.find((a) => a.id === id);
+                        setAssetCurrentPrice(asset?.currentPrice ?? null);
+                      }}
+                    >
+                      {investmentAssets.map((a) => (
+                        <Select.Option key={a.id} value={a.id}>
+                          {a.name}（{a.symbol}）持有 {a.quantity} 股
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  {assetCurrentPrice !== null && (
+                    <div style={{ marginTop: -16, marginBottom: 16, color: '#1677ff', fontSize: 13 }}>
+                      當前市價：{formatCurrency(assetCurrentPrice)}
+                    </div>
+                  )}
+                  <Form.Item
+                    label="加倉數量"
+                    name="assetQuantity"
+                    rules={[
+                      { required: true, message: '請輸入加倉數量' },
+                      { type: 'number', min: 0.00000001, message: '數量必須大於 0' },
+                    ]}
+                  >
+                    <InputNumber style={{ width: '100%' }} placeholder="新增持有數量" min={0} onChange={recalcTransferAmount} />
+                  </Form.Item>
+                  <Form.Item
+                    label="單價"
+                    name="assetCostPrice"
+                    rules={[
+                      { required: true, message: '請輸入單價' },
+                      { type: 'number', min: 0.00000001, message: '單價必須大於 0' },
+                    ]}
+                  >
+                    <InputNumber style={{ width: '100%' }} placeholder="這批買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} />
+                  </Form.Item>
+                </>
+              )}
+
+              {assetLinkMode === 'new' && (
+                <>
+                  {/* hidden fields 儲存實際送出的值 */}
+                  <Form.Item name="assetSymbol" hidden><AutoComplete /></Form.Item>
+                  <Form.Item name="assetName" hidden><AutoComplete /></Form.Item>
+                  <Form.Item name="assetType" initialValue="STOCK" hidden><AutoComplete /></Form.Item>
+
+                  <Form.Item
+                    label="資產市場"
+                    name="_assetSearchMarket"
+                    initialValue="STOCK_TW"
+                  >
+                    <Radio.Group onChange={(e) => {
+                      const market: KnownAssetType = e.target.value;
+                      form.setFieldsValue({
+                        assetType: market === 'CRYPTO' ? 'CRYPTO' : 'STOCK',
+                        assetSymbol: undefined,
+                        assetName: undefined,
+                        _assetSearchInput: undefined,
+                      });
+                      setAssetSearchMarket(market);
+                      setAssetSearchOptions([]);
+                      setSelectedAssetDisplay(null);
+                      setAssetCurrentPrice(null);
+                    }}>
+                      <Radio value="STOCK_TW">台股（上市）</Radio>
+                      <Radio value="STOCK_TWO">台股（上櫃）</Radio>
+                      <Radio value="CRYPTO">加密貨幣</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+
+                  <Form.Item
+                    label="搜尋資產"
+                    name="_assetSearchInput"
+                    rules={[{ validator: async () => {
+                      if (!form.getFieldValue('assetSymbol')) throw new Error('請選擇一個資產');
+                    }}]}
+                  >
+                    {selectedAssetDisplay ? (
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Space>
+                          <Tag icon={<CheckCircleOutlined />} color="success" style={{ fontSize: 14, padding: '4px 10px' }}>
+                            {selectedAssetDisplay}
+                          </Tag>
+                          <Button type="link" size="small" onClick={clearSelectedAsset}>
+                            重新選擇
+                          </Button>
+                        </Space>
+                        {assetCurrentPriceLoading && (
+                          <span style={{ color: '#8c8c8c', fontSize: 13 }}>查詢當前市價中...</span>
+                        )}
+                        {!assetCurrentPriceLoading && assetCurrentPrice !== null && (
+                          <span style={{ color: '#1677ff', fontSize: 13 }}>
+                            當前市價：{formatCurrency(assetCurrentPrice)}
+                          </span>
+                        )}
+                      </Space>
+                    ) : (
+                      <AutoComplete
+                        options={assetSearchOptions}
+                        onSearch={handleAssetSymbolSearch}
+                        onSelect={handleAssetSymbolSelect}
+                        placeholder={assetSearchMarket === 'CRYPTO' ? '輸入名稱或代碼，例如：BTC、bitcoin' : '輸入股票代號或名稱，例如：2330、台積電'}
+                        allowClear
+                        onClear={() => form.setFieldsValue({ assetSymbol: undefined, assetName: undefined })}
+                      />
+                    )}
+                  </Form.Item>
+
+                  <Form.Item
+                    label="數量"
+                    name="assetQuantity"
+                    rules={[
+                      { required: true, message: '請輸入數量' },
+                      { type: 'number', min: 0.00000001, message: '數量必須大於 0' },
+                    ]}
+                  >
+                    <InputNumber style={{ width: '100%' }} placeholder="持有數量" min={0} onChange={recalcTransferAmount} />
+                  </Form.Item>
+                  <Form.Item
+                    label="單價"
+                    name="assetCostPrice"
+                    rules={[
+                      { required: true, message: '請輸入單價' },
+                      { type: 'number', min: 0.00000001, message: '單價必須大於 0' },
+                    ]}
+                  >
+                    <InputNumber style={{ width: '100%' }} placeholder="買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} />
+                  </Form.Item>
+                </>
+              )}
+            </>
+          )}
+
           <Form.Item
             label="金額"
             name="amount"
+            extra={assetLinkMode !== 'none' ? '由數量 × 單價自動計算' : undefined}
             rules={[
               { required: true, message: '請輸入金額' },
               { type: 'number', min: 0.01, message: '金額必須大於 0' },
@@ -429,6 +702,7 @@ const TransactionList = () => {
               placeholder="請輸入金額"
               precision={2}
               min={0}
+              disabled={assetLinkMode !== 'none'}
             />
           </Form.Item>
 

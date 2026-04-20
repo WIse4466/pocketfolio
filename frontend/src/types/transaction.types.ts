@@ -27,4 +27,12 @@ export interface TransactionRequest {
   categoryId?: string;
   accountId?: string;
   toAccountId?: string;
+  // 資產連結（TRANSFER_OUT 轉入 INVESTMENT 帳戶時選填）
+  assetId?: string;
+  assetType?: 'STOCK' | 'CRYPTO' | 'FUND' | 'BOND';
+  assetSymbol?: string;
+  assetName?: string;
+  assetQuantity?: number;
+  assetCostPrice?: number;
+  assetNote?: string;
 }

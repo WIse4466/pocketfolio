@@ -28,11 +28,13 @@ import {
   RiseOutlined,
   FallOutlined,
   DollarOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { assetApi } from '@/api/asset.api';
 import { accountApi } from '@/api/account.api';
 import { priceApi } from '@/api/price.api';
+
 import { knownAssetApi, type KnownAssetResult, type KnownAssetType } from '@/api/knownAsset.api';
 import { useWebSocketStore } from '@/store/websocketStore';
 import type { Asset, AssetRequest, AssetType } from '@/types/asset.types';
@@ -58,6 +60,9 @@ const AssetList = () => {
   // searchMarket 控制搜哪個清單（STOCK_TW / STOCK_TWO / CRYPTO），與送出的 type 欄位（STOCK / CRYPTO）分開
   const [searchMarket, setSearchMarket] = useState<KnownAssetType>('STOCK_TW');
   const [searchOptions, setSearchOptions] = useState<{ value: string; label: string; data: KnownAssetResult }[]>([]);
+  const [selectedAssetDisplay, setSelectedAssetDisplay] = useState<string | null>(null);
+  const [assetCurrentPrice, setAssetCurrentPrice] = useState<number | null>(null);
+  const [assetCurrentPriceLoading, setAssetCurrentPriceLoading] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAssetSearch = useCallback((keyword: string) => {
@@ -84,13 +89,29 @@ const AssetList = () => {
     }, 300);
   }, [searchMarket]);
 
-  const handleAssetSelect = useCallback((_value: string, option: { value: string; label: string; data: KnownAssetResult }) => {
-    form.setFieldsValue({
-      symbol: option.data.symbol,
-      name: option.data.name,
-    });
+  const handleAssetSelect = useCallback(async (_value: string, option: { value: string; label: string; data: KnownAssetResult }) => {
+    const assetType = form.getFieldValue('type') ?? 'STOCK';
+    form.setFieldsValue({ symbol: option.data.symbol, name: option.data.name });
+    setSelectedAssetDisplay(`${option.data.name}（${option.data.symbol}）`);
     setSearchOptions([]);
+    setAssetCurrentPrice(null);
+    setAssetCurrentPriceLoading(true);
+    try {
+      const data = await priceApi.getPrice(option.data.symbol, assetType);
+      setAssetCurrentPrice(data.price);
+    } catch {
+      // 查不到價格靜默忽略
+    } finally {
+      setAssetCurrentPriceLoading(false);
+    }
   }, [form]);
+
+  const clearSelectedAsset = () => {
+    setSelectedAssetDisplay(null);
+    setAssetCurrentPrice(null);
+    setSearchOptions([]);
+    form.setFieldsValue({ symbol: undefined, name: undefined, _assetSearch: undefined });
+  };
 
   // 載入資料
   useEffect(() => {
@@ -150,6 +171,8 @@ const AssetList = () => {
 
     setSearchMarket('STOCK_TW');
     setSearchOptions([]);
+    setSelectedAssetDisplay(null);
+    setAssetCurrentPrice(null);
     setModalVisible(true);
   };
 
@@ -160,6 +183,8 @@ const AssetList = () => {
     form.setFieldsValue({ ...record, _searchMarket: market });
     setSearchMarket(market);
     setSearchOptions([]);
+    setSelectedAssetDisplay(`${record.name}（${record.symbol}）`);
+    setAssetCurrentPrice(record.currentPrice ?? null);
     setModalVisible(true);
   };
 
@@ -513,6 +538,8 @@ const AssetList = () => {
               });
               setSearchMarket(market);
               setSearchOptions([]);
+              setSelectedAssetDisplay(null);
+              setAssetCurrentPrice(null);
             }}>
               <Radio value="STOCK_TW">台股（上市）</Radio>
               <Radio value="STOCK_TWO">台股（上櫃）</Radio>
@@ -527,16 +554,33 @@ const AssetList = () => {
               if (!form.getFieldValue('symbol')) throw new Error('請選擇一個資產');
             }}]}
           >
-            <AutoComplete
-              options={searchOptions}
-              onSearch={handleAssetSearch}
-              onSelect={handleAssetSelect}
-              placeholder={searchMarket === 'CRYPTO' ? '輸入名稱或代碼，例如：BTC、bitcoin' : '輸入股票代號或名稱，例如：2330、台積電'}
-              allowClear
-              onClear={() => {
-                form.setFieldsValue({ symbol: undefined, name: undefined });
-              }}
-            />
+            {selectedAssetDisplay ? (
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Space>
+                  <Tag icon={<CheckCircleOutlined />} color="success" style={{ fontSize: 14, padding: '4px 10px' }}>
+                    {selectedAssetDisplay}
+                  </Tag>
+                  <Button type="link" size="small" onClick={clearSelectedAsset}>重新選擇</Button>
+                </Space>
+                {assetCurrentPriceLoading && (
+                  <span style={{ color: '#8c8c8c', fontSize: 13 }}>查詢當前市價中...</span>
+                )}
+                {!assetCurrentPriceLoading && assetCurrentPrice !== null && (
+                  <span style={{ color: '#1677ff', fontSize: 13 }}>當前市價：{formatCurrency(assetCurrentPrice)}</span>
+                )}
+              </Space>
+            ) : (
+              <AutoComplete
+                options={searchOptions}
+                onSearch={handleAssetSearch}
+                onSelect={handleAssetSelect}
+                placeholder={searchMarket === 'CRYPTO' ? '輸入名稱或代碼，例如：BTC、bitcoin' : '輸入股票代號或名稱，例如：2330、台積電'}
+                allowClear
+                onClear={() => {
+                  form.setFieldsValue({ symbol: undefined, name: undefined });
+                }}
+              />
+            )}
           </Form.Item>
 
           <Form.Item
