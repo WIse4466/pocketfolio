@@ -247,11 +247,19 @@ const AssetList = () => {
     }
   };
 
-  // 計算統計資料
-  const totalMarketValue = assets.reduce((sum, asset) => sum + asset.marketValue, 0);
-  const totalCost = assets.reduce((sum, asset) => sum + asset.costPrice * asset.quantity, 0);
-  const totalProfitLoss = totalMarketValue - totalCost;
-  const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+  // 計算統計資料（台股 TWD / 加密貨幣 USD 分開計算，不混合幣別）
+  const twdAssets = assets.filter((a) => (a.priceCurrency ?? 'TWD') === 'TWD');
+  const usdAssets = assets.filter((a) => a.priceCurrency === 'USD');
+
+  const twdMarketValue = twdAssets.reduce((sum, a) => sum + a.marketValue, 0);
+  const twdCost = twdAssets.reduce((sum, a) => sum + a.costPrice * a.quantity, 0);
+  const twdProfitLoss = twdMarketValue - twdCost;
+  const twdProfitLossPercent = twdCost > 0 ? (twdProfitLoss / twdCost) * 100 : 0;
+
+  const usdMarketValue = usdAssets.reduce((sum, a) => sum + a.marketValue, 0);
+  const usdCost = usdAssets.reduce((sum, a) => sum + a.costPrice * a.quantity, 0);
+  const usdProfitLoss = usdMarketValue - usdCost;
+  const usdProfitLossPercent = usdCost > 0 ? (usdProfitLoss / usdCost) * 100 : 0;
 
   // 表格欄位
   const columns: ColumnsType<Asset> = [
@@ -291,19 +299,21 @@ const AssetList = () => {
       title: '成本價',
       dataIndex: 'costPrice',
       key: 'costPrice',
-      width: 100,
+      width: 110,
       align: 'right',
-      render: (price: number) => formatCurrency(price),
+      render: (price: number, record: Asset) => (
+        <span>{formatCurrency(price)} <Text type="secondary" style={{ fontSize: 11 }}>{record.priceCurrency ?? 'TWD'}</Text></span>
+      ),
     },
     {
       title: '當前價格',
       dataIndex: 'currentPrice',
       key: 'currentPrice',
-      width: 120,
+      width: 130,
       align: 'right',
       render: (price: number, record: Asset) => (
         <Tooltip title={`更新時間: ${dayjs(record.lastPriceUpdate).format('MM/DD HH:mm')}`}>
-          <span>{formatCurrency(price)}</span>
+          <span>{formatCurrency(price)} <Text type="secondary" style={{ fontSize: 11 }}>{record.priceCurrency ?? 'TWD'}</Text></span>
         </Tooltip>
       ),
     },
@@ -311,10 +321,10 @@ const AssetList = () => {
       title: '市值',
       dataIndex: 'marketValue',
       key: 'marketValue',
-      width: 120,
+      width: 130,
       align: 'right',
-      render: (value: number) => (
-        <span style={{ fontWeight: 'bold' }}>{formatCurrency(value)}</span>
+      render: (value: number, record: Asset) => (
+        <span style={{ fontWeight: 'bold' }}>{formatCurrency(value)} <Text type="secondary" style={{ fontSize: 11 }}>{record.priceCurrency ?? 'TWD'}</Text></span>
       ),
       sorter: (a, b) => a.marketValue - b.marketValue,
     },
@@ -419,63 +429,94 @@ const AssetList = () => {
             ))}
           </Select>
 
-          {/* 統計卡片 */}
-          <Row gutter={16} style={{ marginBottom: 16 }}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="總市值"
-                  value={totalMarketValue}
-                  precision={0}
-                  prefix={<DollarOutlined />}
-                  suffix="TWD"
-                />
-              </Card>
-            </Col>
+          {/* 統計卡片 — 台股（TWD）*/}
+          {twdAssets.length > 0 && (
+            <>
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>台股（TWD）</Text>
+              <Row gutter={16} style={{ marginBottom: 8 }}>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic title="市值" value={twdMarketValue} precision={0} prefix={<DollarOutlined />} suffix="TWD" />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic title="成本" value={twdCost} precision={0} prefix="$" suffix="TWD" />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="損益"
+                      value={twdProfitLoss}
+                      precision={0}
+                      valueStyle={{ color: twdProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
+                      prefix={twdProfitLoss >= 0 ? <RiseOutlined /> : <FallOutlined />}
+                      suffix="TWD"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="報酬率"
+                      value={twdProfitLossPercent}
+                      precision={2}
+                      valueStyle={{ color: twdProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
+                      suffix="%"
+                    />
+                    <Progress percent={Math.abs(twdProfitLossPercent)} showInfo={false} strokeColor={twdProfitLoss >= 0 ? '#52c41a' : '#ff4d4f'} size="small" />
+                  </Card>
+                </Col>
+              </Row>
+            </>
+          )}
 
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="總成本"
-                  value={totalCost}
-                  precision={0}
-                  prefix="$"
-                  suffix="TWD"
-                />
-              </Card>
-            </Col>
+          {/* 統計卡片 — 加密貨幣（USD）*/}
+          {usdAssets.length > 0 && (
+            <>
+              <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>加密貨幣（USD）</Text>
+              <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic title="市值" value={usdMarketValue} precision={2} prefix={<DollarOutlined />} suffix="USD" />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic title="成本" value={usdCost} precision={2} prefix="$" suffix="USD" />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="損益"
+                      value={usdProfitLoss}
+                      precision={2}
+                      valueStyle={{ color: usdProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
+                      prefix={usdProfitLoss >= 0 ? <RiseOutlined /> : <FallOutlined />}
+                      suffix="USD"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="報酬率"
+                      value={usdProfitLossPercent}
+                      precision={2}
+                      valueStyle={{ color: usdProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
+                      suffix="%"
+                    />
+                    <Progress percent={Math.abs(usdProfitLossPercent)} showInfo={false} strokeColor={usdProfitLoss >= 0 ? '#52c41a' : '#ff4d4f'} size="small" />
+                  </Card>
+                </Col>
+              </Row>
+            </>
+          )}
 
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="總損益"
-                  value={totalProfitLoss}
-                  precision={0}
-                  valueStyle={{ color: totalProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
-                  prefix={totalProfitLoss >= 0 ? <RiseOutlined /> : <FallOutlined />}
-                  suffix="TWD"
-                />
-              </Card>
-            </Col>
-
-            <Col xs={24} sm={12} lg={6}>
-              <Card>
-                <Statistic
-                  title="報酬率"
-                  value={totalProfitLossPercent}
-                  precision={2}
-                  valueStyle={{ color: totalProfitLoss >= 0 ? '#3f8600' : '#cf1322' }}
-                  suffix="%"
-                />
-                <Progress
-                  percent={Math.abs(totalProfitLossPercent)}
-                  showInfo={false}
-                  strokeColor={totalProfitLoss >= 0 ? '#52c41a' : '#ff4d4f'}
-                  size="small"
-                />
-              </Card>
-            </Col>
-          </Row>
+          {/* 只有台股或只有加密貨幣時補間距 */}
+          {twdAssets.length === 0 && usdAssets.length === 0 && <div style={{ marginBottom: 16 }} />}
 
           {/* 表格 */}
           <Table
@@ -600,18 +641,20 @@ const AssetList = () => {
           </Form.Item>
 
           <Form.Item
-            label="成本價格"
+            label={`成本價格（${searchMarket === 'CRYPTO' ? 'USD' : 'TWD'}）`}
             name="costPrice"
             rules={[
               { required: true, message: '請輸入成本價格' },
               { type: 'number', min: 0.01, message: '價格必須大於 0' },
             ]}
+            extra={searchMarket === 'CRYPTO' ? '加密貨幣以美元（USD）計價' : undefined}
           >
             <InputNumber
               style={{ width: '100%' }}
               placeholder="請輸入購買時的價格"
               precision={2}
               min={0}
+              addonAfter={searchMarket === 'CRYPTO' ? 'USD' : 'TWD'}
             />
           </Form.Item>
 

@@ -167,15 +167,17 @@ public class TransactionService {
             if (unitCost == null || unitCost.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("單價必須大於 0");
             }
+            AssetType newType = request.getAssetType() != null ? request.getAssetType() : AssetType.STOCK;
             Asset newAsset = new Asset();
             newAsset.setAccount(toAccount);
             newAsset.setUser(user);
-            newAsset.setType(request.getAssetType() != null ? request.getAssetType() : AssetType.STOCK);
+            newAsset.setType(newType);
             newAsset.setSymbol(symbol);
             newAsset.setName(request.getAssetName() != null ? request.getAssetName() : symbol);
             newAsset.setQuantity(request.getAssetQuantity());
             newAsset.setCostPrice(unitCost);
             newAsset.setCurrentPrice(unitCost);
+            newAsset.setPriceCurrency(newType == AssetType.CRYPTO ? "USD" : "TWD");
             newAsset.setNote(request.getAssetNote());
             assetRepository.save(newAsset);
         }

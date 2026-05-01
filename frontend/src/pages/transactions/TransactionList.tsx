@@ -57,6 +57,7 @@ const TransactionList = () => {
   const [selectedAssetDisplay, setSelectedAssetDisplay] = useState<string | null>(null);
   const [assetCurrentPrice, setAssetCurrentPrice] = useState<number | null>(null);
   const [assetCurrentPriceLoading, setAssetCurrentPriceLoading] = useState(false);
+  const [assetPriceCurrency, setAssetPriceCurrency] = useState<'TWD' | 'USD'>('TWD');
   const assetDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [form] = Form.useForm();
 
@@ -116,6 +117,7 @@ const TransactionList = () => {
     setAssetSearchOptions([]);
     setSelectedAssetDisplay(null);
     setAssetCurrentPrice(null);
+    setAssetPriceCurrency('TWD');
   };
 
   const clearSelectedAsset = () => {
@@ -557,6 +559,7 @@ const TransactionList = () => {
                       onChange={(id: string) => {
                         const asset = investmentAssets.find((a) => a.id === id);
                         setAssetCurrentPrice(asset?.currentPrice ?? null);
+                        setAssetPriceCurrency(asset?.priceCurrency === 'USD' ? 'USD' : 'TWD');
                       }}
                     >
                       {investmentAssets.map((a) => (
@@ -582,14 +585,14 @@ const TransactionList = () => {
                     <InputNumber style={{ width: '100%' }} placeholder="新增持有數量" min={0} onChange={recalcTransferAmount} />
                   </Form.Item>
                   <Form.Item
-                    label="單價"
+                    label={`單價（${assetPriceCurrency}）`}
                     name="assetCostPrice"
                     rules={[
                       { required: true, message: '請輸入單價' },
                       { type: 'number', min: 0.00000001, message: '單價必須大於 0' },
                     ]}
                   >
-                    <InputNumber style={{ width: '100%' }} placeholder="這批買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} />
+                    <InputNumber style={{ width: '100%' }} placeholder="這批買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} addonAfter={assetPriceCurrency} />
                   </Form.Item>
                 </>
               )}
@@ -618,6 +621,7 @@ const TransactionList = () => {
                       setAssetSearchOptions([]);
                       setSelectedAssetDisplay(null);
                       setAssetCurrentPrice(null);
+                      setAssetPriceCurrency(market === 'CRYPTO' ? 'USD' : 'TWD');
                     }}>
                       <Radio value="STOCK_TW">台股（上市）</Radio>
                       <Radio value="STOCK_TWO">台股（上櫃）</Radio>
@@ -674,14 +678,14 @@ const TransactionList = () => {
                     <InputNumber style={{ width: '100%' }} placeholder="持有數量" min={0} onChange={recalcTransferAmount} />
                   </Form.Item>
                   <Form.Item
-                    label="單價"
+                    label={`單價（${assetPriceCurrency}）`}
                     name="assetCostPrice"
                     rules={[
                       { required: true, message: '請輸入單價' },
                       { type: 'number', min: 0.00000001, message: '單價必須大於 0' },
                     ]}
                   >
-                    <InputNumber style={{ width: '100%' }} placeholder="買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} />
+                    <InputNumber style={{ width: '100%' }} placeholder="買入的每單位價格" min={0} precision={2} onChange={recalcTransferAmount} addonAfter={assetPriceCurrency} />
                   </Form.Item>
                 </>
               )}

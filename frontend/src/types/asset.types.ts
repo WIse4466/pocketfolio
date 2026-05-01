@@ -13,6 +13,7 @@ export interface Asset {
   profitLoss: number;
   profitLossPercent: number;
   lastPriceUpdate?: string;
+  priceCurrency?: string;  // 市價幣別：TWD（台股）/ USD（加密貨幣）
 }
 
 export interface AssetRequest {

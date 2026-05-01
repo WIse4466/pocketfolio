@@ -52,6 +52,7 @@ public class YahooFinanceService {
                 return PriceData.builder()
                         .symbol(symbol)
                         .price(price)
+                        .currency("TWD")
                         .updateTime(LocalDateTime.now())
                         .source("YAHOO_FINANCE")
                         .build();

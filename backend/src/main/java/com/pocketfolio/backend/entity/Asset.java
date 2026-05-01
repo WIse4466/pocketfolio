@@ -46,6 +46,9 @@ public class Asset {
 
     private String note;  // 備註
 
+    @Column(length = 3)
+    private String priceCurrency;  // 市價幣別：TWD（台股）/ USD（加密貨幣）
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

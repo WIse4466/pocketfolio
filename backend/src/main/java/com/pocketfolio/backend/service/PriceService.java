@@ -93,6 +93,9 @@ public class PriceService {
         // 更新資產價格
         asset.setCurrentPrice(newPrice);
         asset.setLastPriceUpdate(LocalDateTime.now());
+        if (priceData.getCurrency() != null) {
+            asset.setPriceCurrency(priceData.getCurrency());
+        }
         assetRepository.save(asset);
 
         log.info("資產價格已更新: {} ${} -> ${} ({}{}) ",
