@@ -20,6 +20,7 @@ public class PriceData implements Serializable {
 
     private String symbol;           // 代號
     private BigDecimal price;        // 價格
+    private String currency;         // 幣別：USD（加密貨幣）/ TWD（台股）
     private LocalDateTime updateTime; // 更新時間
     private String source;           // 資料來源（COINGECKO / YAHOO）
 

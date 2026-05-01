@@ -1,6 +1,6 @@
 # PocketFolio 待辦事項
 
-更新時間：2026-04-19
+更新時間：2026-05-02
 
 ---
 
@@ -47,7 +47,16 @@
 - [x] 前端：目標帳戶選擇後，若是 INVESTMENT 類型，動態顯示資產選擇器（現有資產 + 「新增資產」選項）
 - [x] 單元測試覆蓋新邏輯（8 個測試，TransactionServiceTest）
 
-### 2. 手動資產輸入（新分支：`feature/manual-asset-entry`）
+### 2. 加密貨幣幣別不一致（[#15](https://github.com/WIse4466/pocketfolio/issues/15)）（分支：`feature/asset-price-currency`）
+**問題：** CoinGecko 回傳 USD 價格直接存入 `asset.current_price`，與台股 TWD 價格混算，導致資產頁統計數字錯誤。
+- [x] `Asset` entity 加 `priceCurrency` 欄位（CRYPTO → USD，STOCK → TWD）
+- [x] `PriceService` 更新價格時寫入 `priceCurrency`；`AssetService` / `TransactionService` 建立資產時依 type 初始化
+- [x] 前端 AssetList：統計卡片按幣別分組（台股 TWD / 加密貨幣 USD），不混算
+- [x] 前端 AssetList 表格：成本價、當前價格、市值欄動態顯示幣別 label
+- [x] 前端表單（AssetList、TransactionList）：成本/單價欄位顯示幣別提示（USD/TWD）
+- [ ] （長期）引入匯率換算，統一以 TWD 加總顯示投資組合總值（`feature/exchange-rate`）
+
+### 3. 手動資產輸入（新分支：`feature/manual-asset-entry`）
 **目標：** 讓使用者可以輸入不在已知清單的資產（美股、非前 200 幣等）。
 - [ ] 資產管理頁 + 交易頁資產連結：AutoComplete 下方加「找不到資產？手動輸入」連結，切換為純文字欄位
 - [ ] 兩個頁面同步處理，保持 UX 一致
