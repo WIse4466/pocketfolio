@@ -24,5 +24,6 @@ public class AssetResponse {
     private BigDecimal marketValue;       // 市值
     private BigDecimal profitLoss;        // 損益金額
     private BigDecimal profitLossPercent; // 損益百分比
+    private String priceCurrency;         // 市價幣別：TWD / USD
     private String note;
 }

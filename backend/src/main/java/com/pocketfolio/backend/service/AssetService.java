@@ -60,6 +60,7 @@ public class AssetService {
         asset.setQuantity(request.getQuantity());
         asset.setCostPrice(request.getCostPrice());
         asset.setCurrentPrice(request.getCostPrice());  // 初始時用成本價
+        asset.setPriceCurrency(request.getType() == AssetType.CRYPTO ? "USD" : "TWD");
         asset.setNote(request.getNote());
 
         // 設定用戶關聯
@@ -223,6 +224,7 @@ public class AssetService {
                 .marketValue(asset.getMarketValue())
                 .profitLoss(asset.getProfitLoss())
                 .profitLossPercent(asset.getProfitLossPercent())
+                .priceCurrency(asset.getPriceCurrency())
                 .note(asset.getNote())
                 .build();
     }

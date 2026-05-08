@@ -52,6 +52,7 @@ public class CoinGeckoService {
                 return PriceData.builder()
                         .symbol(id)
                         .price(price)
+                        .currency("USD")
                         .updateTime(LocalDateTime.now())
                         .source("CoinGecko")
                         .build();
