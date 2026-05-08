@@ -34,6 +34,7 @@ import dayjs from 'dayjs';
 import { assetApi } from '@/api/asset.api';
 import { accountApi } from '@/api/account.api';
 import { priceApi } from '@/api/price.api';
+import { exchangeRateApi, type ExchangeRateData } from '@/api/exchangeRate.api';
 
 import { knownAssetApi, type KnownAssetResult, type KnownAssetType } from '@/api/knownAsset.api';
 import { useWebSocketStore } from '@/store/websocketStore';
@@ -53,6 +54,7 @@ const AssetList = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
   const [form] = Form.useForm();
   const { lastPriceUpdateAt } = useWebSocketStore();
 
@@ -135,12 +137,14 @@ const AssetList = () => {
 
   const loadAccounts = async () => {
     try {
-      const [investmentAccounts, all] = await Promise.all([
+      const [investmentAccounts, all, rate] = await Promise.all([
         accountApi.getAccounts({ type: 'INVESTMENT' }),
         accountApi.getAccounts(),
+        exchangeRateApi.getUsdToTwd().catch(() => null),
       ]);
       setAccounts(investmentAccounts);
       setAllAccounts(all);
+      setExchangeRate(rate);
       if (investmentAccounts.length > 0) {
         setSelectedAccount(investmentAccounts[0].id);
       }
@@ -260,6 +264,12 @@ const AssetList = () => {
   const usdCost = usdAssets.reduce((sum, a) => sum + a.costPrice * a.quantity, 0);
   const usdProfitLoss = usdMarketValue - usdCost;
   const usdProfitLossPercent = usdCost > 0 ? (usdProfitLoss / usdCost) * 100 : 0;
+
+  // 換算後的投資組合總計（僅在有加密貨幣時才顯示）
+  const rate = exchangeRate?.price ?? null;
+  const portfolioTotalTwd = rate !== null && usdAssets.length > 0
+    ? twdMarketValue + usdMarketValue * rate
+    : null;
 
   // 表格欄位
   const columns: ColumnsType<Asset> = [
@@ -517,6 +527,28 @@ const AssetList = () => {
 
           {/* 只有台股或只有加密貨幣時補間距 */}
           {twdAssets.length === 0 && usdAssets.length === 0 && <div style={{ marginBottom: 16 }} />}
+
+          {/* 投資組合總計（跨幣別換算） */}
+          {portfolioTotalTwd !== null && (
+            <Card
+              size="small"
+              style={{ marginBottom: 16, background: '#f6ffed', borderColor: '#b7eb8f' }}
+            >
+              <Space split={<span style={{ color: '#d9d9d9' }}>|</span>}>
+                <span>
+                  <Text type="secondary">投資組合總市值（TWD）</Text>
+                  {'　'}
+                  <Text strong style={{ fontSize: 18, color: '#3f8600' }}>
+                    {portfolioTotalTwd.toLocaleString('zh-TW', { maximumFractionDigits: 0 })} TWD
+                  </Text>
+                </span>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  匯率：1 USD = {rate?.toFixed(2)} TWD
+                  {exchangeRate?.source === 'FALLBACK' ? '（預設值）' : ''}
+                </Text>
+              </Space>
+            </Card>
+          )}
 
           {/* 表格 */}
           <Table

@@ -54,7 +54,7 @@
 - [x] 前端 AssetList：統計卡片按幣別分組（台股 TWD / 加密貨幣 USD），不混算
 - [x] 前端 AssetList 表格：成本價、當前價格、市值欄動態顯示幣別 label
 - [x] 前端表單（AssetList、TransactionList）：成本/單價欄位顯示幣別提示（USD/TWD）
-- [ ] （長期）引入匯率換算，統一以 TWD 加總顯示投資組合總值（`feature/exchange-rate`）
+- [x] （長期）引入匯率換算，統一以 TWD 加總顯示投資組合總值（`feature/exchange-rate`）
 
 ### 3. 手動資產輸入（新分支：`feature/manual-asset-entry`）
 **目標：** 讓使用者可以輸入不在已知清單的資產（美股、非前 200 幣等）。
