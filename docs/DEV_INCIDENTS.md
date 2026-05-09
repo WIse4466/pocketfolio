@@ -46,6 +46,7 @@
 | day23 | Bug | `sockjs-client` 在 Vite 環境報錯（global 未定義） | SockJS 是 CommonJS 套件，用了 Node.js 的 `global` 變數，瀏覽器沒有 | 在 `vite.config.ts` 加 `define: { global: 'globalThis' }` polyfill |
 | day23 | Bug | WebSocket 用 `ws://` URL 連線失敗 | SockJS 自己處理協議升級，不接受 `ws://`，要傳 `http://` | 改用 `http://` URL，讓 SockJS 自行升級為 WebSocket 連線 |
 | day23 | 架構設計 | WebSocket 跨元件通訊：Zustand timestamp 方案 | `MainLayout` 收到 WS 推播後，如何通知深層子元件（AssetList）刷新 | Zustand store 存 `lastPriceUpdateAt` 時間戳，`AssetList` 用 `useEffect` 監聽，timestamp 改變就 reload |
+| day20~21 | Bug | 前端刪除有關聯資料的類別時沒有友善提示 | 後端拋出 Foreign Key Constraint 例外，前端直接顯示原始錯誤 | `catch` 區塊捕捉後端例外，顯示中文友善提示 |
 | day24 | Bug | `Input` import 被誤刪導致頁面 crash | 把 symbol 欄位改成 AutoComplete 時順手刪掉 `Input` import，但備註欄仍用 `Input.TextArea` | 把 `Input` 加回 import 清單；教訓：刪 import 前搜尋整個檔案 |
 | day24 | Bug | 單元測試驗證順序與業務邏輯不符 | `assetCostPrice == null` 的驗證放在 `findById()` 之前，「資產不存在」測試反而被 costPrice 驗證攔截，拋錯訊息不對 | 把 costPrice 驗證移入各自的業務分支（加倉 / 新增），確保驗證順序符合邏輯流程 |
 | day24 | Bug | Production 出現 duplicate key（JPA flush 順序問題） | `deleteByAssetType()` 是 JPQL，Hibernate 可能把 DELETE 和後續 INSERT 排進同一批次，導致 unique constraint 衝突 | 在 delete 後顯式呼叫 `flush()`，強制 DELETE 先送達資料庫再執行 INSERT |
@@ -55,6 +56,31 @@
 | day25 | Bug | 加 `currency` 欄位後 Redis 反序列化失敗 | `PriceData` 實作 `Serializable`，class 結構改變導致 Java 重新算 `serialVersionUID`，舊快取物件無法反序列化，API 全壞 | 立即：`redis-cli FLUSHALL` 清快取。根本：加明確的 `serialVersionUID = 2L`，之後加欄位不會改變 UID |
 | day25 | 架構設計 | 匯率 fallback 防禦設計 | Yahoo Finance 若無法取得 `USDTWD=X`，投資組合總計 Banner 不能直接壞掉 | fallback 回傳預設值 32.0，並在 UI 上標示「預設值」，降級而非崩潰 |
 | day25 | 工具 | `docker-compose down -v` 清掉本地資料庫 | `-v` 參數會一起刪 Docker volume，PostgreSQL 資料完全清空；之後啟動 Hibernate 把空 tables 重建 | 本地開發不加 `-v`；Production 用 Cloud SQL，不受 Docker volume 影響 |
+
+---
+
+## 從 git 歷史補充的事件
+
+| Commit | 分類 | 標題 | 詳情 | 解決辦法 |
+|---|---|---|---|---|
+| `a5fcdc1` | Bug | Spring Boot 啟動失敗：`PriceAlertService` 循環依賴 | `PriceAlertService` 依賴 `PriceService`，`PriceService` 間接依賴回來，Spring 無法建立 Bean | 把即時價格補充邏輯下放到 Controller 層（呼叫端），打破 Service 層的循環 |
+| `37e92e9` | 架構設計 | 轉帳記錄被統計到收支，導致帳戶餘額雙重計算 | `TRANSFER_IN` 被算成收入、`TRANSFER_OUT` 算成支出，加總後錢憑空多出來 | 統計查詢和餘額計算一律排除 `TRANSFER_*` 類型；`transferGroupId` 讓兩筆記錄配對，刪一筆自動刪另一筆 |
+| `78aa860` | Bug | CoinGecko `/coins/list` 回應超過 WebClient 緩衝區上限，靜默失敗 | WebClient 預設 256KB，CoinGecko 幣種清單約 1MB，超過後直接拋例外但被吞掉，同步看起來成功實際上沒資料 | 用 `ExchangeStrategies` 設定 WebClient buffer 為 5MB |
+| `b341277` | Bug | 啟動時只判斷「知名資產 DB 是否為空」，導致 CRYPTO 沒被同步 | `known_assets` 有台股資料就判定「不是空的」，跳過全部同步；CRYPTO 欄位永遠是空的 | 改為對每個 `assetType`（STOCK_TW / STOCK_TWO / CRYPTO）個別判斷是否為空再決定是否同步 |
+| `2f372d2` | Bug | CoinGecko 部分幣種 symbol 超過欄位長度，`INSERT` 失敗 | 欄位定義 `VARCHAR(20)`，部分垃圾幣 symbol 長達 38 字元，批次寫入整批失敗 | 調整欄位長度：`display_code` 20→100、`symbol` 30→100、`name` 100→200 |
+| `5bd6f5e` | 架構設計 | 把 CoinGecko 來源從 `/coins/list` 換成 `/coins/markets` | `/coins/list` 有 15,000+ 幣種含大量下架垃圾幣，搜尋結果品質很差 | 改用 `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200`，只同步市值前 200 名，搜尋結果順序帶 `market_cap_rank` |
+| `5bd6f5e` | Bug | 舊資產 CoinGecko ID 存大寫，API 查詢 404 | CoinGecko API 要求 id 是小寫（如 `bitcoin`），舊資料存成 `BITCOIN` 導致查價格回 404 | `CoinGeckoService.getPrice()` 統一對輸入做 `toLowerCase()`，相容舊資料 |
+| `5bd6f5e` | Bug | `LocalDateTime` 預設序列化為陣列，前端顯示 `Invalid Date` | Jackson 預設把 `LocalDateTime` 序列化成 `[2026,3,1,12,0,0]` 數字陣列，`new Date(陣列)` 解析失敗 | 在 `application.yaml` 加 `write-dates-as-timestamps: false`，強制輸出 ISO 8601 字串 |
+| `7f50d7d` | Bug | `@Retryable` / `@Transactional` 在 Service 內部自呼叫完全失效 | `KnownAssetSyncService.syncAll()` 用 `this::syncTwse` 呼叫自己，繞過 Spring AOP 代理，retry 和 transaction 都沒生效 | 移除 `syncAll()`，改由 `KnownAssetSyncScheduler` 直接透過注入的 proxy 呼叫各 sync 方法 |
+| `06327ca` | Bug | `Thread.sleep` 放在 `getPrice()` 內，使用者手動刷新也被卡住 | 限速 sleep 寫在 `CoinGeckoService.getPrice()` 裡，快取命中時也會休眠，使用者觸發的即時查詢同樣被阻塞 | 把 sleep 移到 `PriceService.updateAllAssetPrices()` 的批次迴圈裡，只在實際呼叫外部 API（非快取命中）後才休眠 |
+| `5c7e178` | Bug | CI 啟動時 `@EventListener` 呼叫外部 API 導致測試失敗 | `@SpringBootTest` 啟動完整 Spring context，`ApplicationReadyEvent` 觸發 `KnownAssetSyncScheduler` 呼叫 TWSE / CoinGecko，CI 沒有外部網路 | 在測試設定中用 `@MockitoBean` 替換 `KnownAssetSyncScheduler`，阻止外部 API 呼叫 |
+| `4e35918` | 部署 | CI 後端測試無法啟動 Spring context（沒有 PostgreSQL / Redis） | GitHub Actions 的 runner 沒有資料庫，`@SpringBootTest` 連線失敗，整個 test job 掛掉 | 在 workflow yml 加 `services:` 區塊，起 `postgres:16` 和 `redis:7` 容器 |
+| `02d1782` | 部署 | ESLint v8→v9 升級導致 CI lint 失敗 | ESLint v9 改用 flat config，`--ext` flag 已移除；`eslint-plugin-react-hooks` 也需要對應的 v9 版 | 升級所有相關 eslint 套件、更新 `eslint.config.js` 格式、修掉所有 lint 錯誤（`any` 型別等） |
+| `8b671ab` | 部署 | Cloud Run 滾動更新期間資料庫連線數超上限，FATAL 錯誤 | `db-f1-micro` `max_connections=25`，滾動更新時舊版和新版同時存在，預設 `HikariCP pool-size=10` × 2 個實例 = 20，加上其他連線就超過 25 | 把 `maximum-pool-size` 降為 5，`minimum-idle` 降為 2，讓多版本共存時也不超限 |
+| `b5f75df` | 部署 | CI 拉 Docker 基底映像時觸發 Docker Hub 流量限制 | GitHub Actions 使用的 IP 屬於大量用戶共用，Docker Hub 對匿名用戶有拉取次數限制（每 6 小時 100 次） | 把 `Dockerfile` 的基底映像改成 `mirror.gcr.io/library/eclipse-temurin`，從 Google 的 GCR 快取拉取，不限速 |
+| `a775357` | 部署 | `--set-env-vars` 多行環境變數注入失敗 | `gcloud run deploy --set-env-vars` 在 shell 多行字串時帶入空白字元，導致 env var 值解析錯誤 | 改用 Python 讀取 yaml 再寫成 `KEY=VALUE` 格式的檔案，用 `--env-vars-file` 注入 |
+| `a775357` | 部署 | 第一次部署到 Cloud SQL 失敗（schema 不存在） | `ddl-auto: validate` 要求 schema 已存在才能啟動，但 Cloud SQL 是全新的空資料庫 | 第一次部署改用 `ddl-auto: update` 讓 Hibernate 自動建 schema；之後保持 `update` 避免風險 |
+| `dcacf23` / `ac2a754` | 部署 | Production CORS 擋掉 Firebase Hosting 的 API 請求與 WebSocket 握手 | CORS 設定只允許 `localhost`，部署後 Firebase 的 domain 被擋；WebSocket 的 CORS 和 Spring Security 的 CORS 是**分開**設定的，漏掉一個就 403 | 在 `SecurityConfig` 的 CORS 設定和 `WebSocketConfig` 的 `setAllowedOrigins` 都加上 Firebase Hosting domain |
 
 ---
 
