@@ -18,6 +18,10 @@ import java.time.LocalDateTime;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PriceData implements Serializable {
 
+    // 明確指定 serialVersionUID，避免加欄位時 Redis 反序列化失敗
+    @SuppressWarnings("java:S5961")
+    private static final long serialVersionUID = 2L;
+
     private String symbol;           // 代號
     private BigDecimal price;        // 價格
     private String currency;         // 幣別：USD（加密貨幣）/ TWD（台股）
